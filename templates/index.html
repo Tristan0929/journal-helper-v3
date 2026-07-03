@@ -12,6 +12,8 @@
   --border:#e5e2dd; --accent:#1a1a1a; --accent-hover:#3a3a3a;
   --brand:#b3541e; --radius:16px; --shadow:0 8px 30px rgba(0,0,0,.05);
   --sidebar-width:420px;
+  --vocab:#c0392b;      /* 重点词汇：深红 */
+  --sentence:#1f5fa8;   /* 重点句子：深蓝 */
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
@@ -49,6 +51,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica N
   display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:600;flex-shrink:0;margin-top:2px}
 .step-content{font-size:.88rem}
 .step-content strong{display:block;margin-bottom:.15rem;font-weight:600}
+.legend{display:flex;gap:1.2rem;margin-top:1rem;font-size:.82rem;color:var(--muted);flex-wrap:wrap}
+.legend b{font-weight:700}
+.legend .v{color:var(--vocab)}
+.legend .s{color:var(--sentence);font-style:italic}
 .input-group{display:flex;flex-direction:column;gap:.5rem}
 .input-group label{font-size:.8rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 textarea{width:100%;padding:1rem;border:1px solid var(--border);border-radius:12px;font-size:.95rem;
@@ -67,7 +73,8 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
 #result table{border-collapse:collapse;width:100%;margin:1rem 0}
 #result th,#result td{border:1px solid var(--border);padding:.5rem .7rem;text-align:left;font-size:.9rem}
 #result th{background:#faf7f3}
-#result em{color:var(--brand);font-style:italic}
+#result strong{color:var(--vocab);font-weight:700}       /* 重点词汇：红 */
+#result em{color:var(--sentence);font-style:italic}      /* 重点句子：蓝 */
 .footnotes ol{list-style:none;padding:0;counter-reset:fn}
 .footnotes li{background:#fafaf9;border:1px solid #eae7e2;border-radius:10px;
   padding:1rem 1.2rem 1rem 2.5rem;margin-bottom:.8rem;position:relative}
@@ -155,6 +162,11 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
         <div class="step-content"><strong>粘贴文章</strong>直接把外刊复制进来，分栏、断行、乱码都行，AI 会自动整理。</div></div>
       <div class="step"><span class="step-number">3</span>
         <div class="step-content"><strong>分析 & 提问</strong>点开始分析；选中词句可在侧边栏提问。笔记与对话可分别导出 PDF。</div></div>
+    </div>
+    <div class="legend">
+      <span><b class="v">红色加粗</b> = 重点词汇/词组</span>
+      <span><b class="s">蓝色斜体</b> = 精彩句子</span>
+      <span>（导出 PDF 时颜色保留）</span>
     </div>
   </div>
 
@@ -257,7 +269,6 @@ let busy = false;
 
 /* ---------- 初始化 ---------- */
 window.onload = () => {
-  // 填充服务商下拉
   const sel = document.getElementById("provider");
   Object.entries(PROVIDERS).forEach(([k,v]) => {
     const o = document.createElement("option"); o.value=k; o.textContent=v.name; sel.appendChild(o);
@@ -273,7 +284,6 @@ function loadConfig(){
     const raw = localStorage.getItem("jh_cfg");
     if(raw){ cfg = Object.assign(cfg, JSON.parse(raw)); }
     else{
-      // 兼容旧版本只存了 apiKey 的情况
       const old = localStorage.getItem("apiKey");
       if(old) cfg.key = old;
     }
@@ -543,11 +553,14 @@ function openPrintWindow(title, css, innerHtml){
   setTimeout(()=>{ try{ w.print(); }catch(e){} }, 500);
 }
 function notesPrintCSS(){
-  return `body{font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+  return `*{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    body{font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
     color:#222;line-height:1.75;max-width:760px;margin:0 auto;padding:2rem}
     .doc-title{text-align:center;font-size:1.6rem;margin-bottom:1.5rem}
     h2{margin-top:1.8rem;font-size:1.3rem;border-bottom:2px solid #eee;padding-bottom:.3rem}
-    h3{margin-top:1.2rem}em{color:#b3541e;font-style:italic}strong{color:#000}
+    h3{margin-top:1.2rem}
+    strong{color:#c0392b;font-weight:700}      /* 重点词汇：红 */
+    em{color:#1f5fa8;font-style:italic}         /* 重点句子：蓝 */
     table{border-collapse:collapse;width:100%;margin:1rem 0}
     th,td{border:1px solid #ccc;padding:.45rem .6rem;font-size:.9rem;text-align:left}th{background:#f6f2ec}
     .footnotes{margin-top:2rem;border-top:1px solid #ddd;padding-top:1rem;font-size:.9rem}
@@ -555,14 +568,17 @@ function notesPrintCSS(){
     @page{margin:1.6cm}`;
 }
 function chatPrintCSS(){
-  return `body{font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+  return `*{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    body{font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
     color:#222;line-height:1.65;max-width:760px;margin:0 auto;padding:2rem}
     .doc-title{text-align:center;font-size:1.5rem;margin-bottom:1.6rem}
     .qa{margin-top:1.4rem}
     .ctx{font-size:.85rem;color:#888;border-left:3px solid #ddd;padding-left:.8rem;margin-bottom:.4rem}
     .q{margin-bottom:.5rem}
     .a{background:#f6f2ec;border-radius:8px;padding:.8rem 1rem;margin:.3rem 0 0}
-    .a p{margin:.3rem 0}table{border-collapse:collapse}th,td{border:1px solid #ccc;padding:.3rem .5rem;font-size:.85rem}
+    .a p{margin:.3rem 0}
+    .a strong{color:#c0392b}.a em{color:#1f5fa8;font-style:italic}
+    table{border-collapse:collapse}th,td{border:1px solid #ccc;padding:.3rem .5rem;font-size:.85rem}
     @page{margin:1.6cm}`;
 }
 function downloadText(text, filename, mime){
