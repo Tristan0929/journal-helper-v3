@@ -152,6 +152,9 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
 .sidebar-input-area{display:flex;border-top:1px solid var(--border);padding:.8rem;gap:.5rem}
 .sidebar-input-area input{flex:1;border:1px solid var(--border);border-radius:9px;padding:.6rem;font-size:.9rem}
 .sidebar-input-area button{padding:.5rem 1.1rem}
+#askBtn{position:absolute;display:none;z-index:1500;background:var(--accent);color:#fff;border:none;
+  padding:.4rem .8rem;border-radius:9px;font-size:.82rem;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.25)}
+#askBtn:hover{background:var(--accent-hover)}
 .sidebar-toggle{position:fixed;bottom:2rem;right:2rem;width:56px;height:56px;border-radius:50%;
   background:var(--brand);color:#fff;border:none;font-size:1.5rem;cursor:pointer;z-index:1000;
   box-shadow:0 4px 14px rgba(0,0,0,.18);transition:right .3s ease}
@@ -234,6 +237,7 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
   </div>
 </div>
 
+<button id="askBtn" onclick="askSelection()">💬 问 AI</button>
 <button class="sidebar-toggle" onclick="toggleSidebar()">💬</button>
 
 <div class="sidebar" id="sidebar">
@@ -276,6 +280,8 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
 <script>
 "use strict";
 const md = window.markdownit({html:false,breaks:true,linkify:true}).use(window.markdownitFootnote);
+/* 只把转义后的 <br> 安全还原成真换行，其它 HTML 仍保持转义 */
+function renderMd(t){ return md.render(t||"").replace(/&lt;br\s*\/?&gt;/gi,"<br>"); }
 
 const PROVIDERS = {
   deepseek:{name:"DeepSeek（推荐）",base:"https://api.deepseek.com",model:"deepseek-v4-flash",
@@ -357,7 +363,7 @@ function restoreSession(){
     if(s.article) document.getElementById("articleInput").value=s.article;
     if(s.markdown){ lastMarkdown=s.markdown; renderNotes(lastMarkdown); showWorkspace(); }
     if(Array.isArray(s.chat)){ chatHistory=s.chat;
-      chatHistory.forEach(m=>{ if(m.role==="user") addMessage("user",m.content); else addMessage("ai",md.render(m.content),true); }); }
+      chatHistory.forEach(m=>{ if(m.role==="user") addMessage("user",m.content); else addMessage("ai",renderMd(m.content),true); }); }
   }catch(e){}
 }
 
@@ -374,19 +380,40 @@ function updateContext(text){
   if(text){ span.innerHTML=md.renderInline("**"+text.replace(/\*/g,"\\*")+"**"); bar.classList.add("show"); }
   else{ span.innerHTML=""; bar.classList.remove("show"); }
 }
+/* 选中文字后：只在旁边冒出「问 AI」小按钮，点了才打开助手 */
+let pendingSel="";
 document.addEventListener("mouseup",(e)=>{
   setTimeout(()=>{
-    const sel=window.getSelection().toString().trim();
+    const btn=document.getElementById("askBtn");
+    const sel=window.getSelection();
+    const text=sel.toString().trim();
     const notes=document.getElementById("panel-notes");
-    if(sel && notes && notes.contains(e.target)){
-      const sb=document.getElementById("sidebar"), c=document.getElementById("mainContainer");
-      if(!sb.classList.contains("open")){ sb.classList.add("open"); c.classList.add("sidebar-open");
-        if(!document.getElementById("chatMessages").hasChildNodes())
-          addMessage("ai","👋 你好！可以直接问任何英语问题；在笔记里选中词句，我会结合本文的用法一起解答。"); }
-      updateContext(sel);
+    if(text && notes && notes.contains(e.target)){
+      pendingSel=text;
+      const rect=sel.getRangeAt(0).getBoundingClientRect();
+      btn.style.top=(window.scrollY+rect.bottom+8)+"px";
+      btn.style.left=(window.scrollX+Math.max(rect.left,8))+"px";
+      btn.style.display="block";
     }
   },10);
 });
+document.addEventListener("mousedown",(e)=>{
+  const btn=document.getElementById("askBtn");
+  if(e.target!==btn) btn.style.display="none";
+});
+window.addEventListener("scroll",()=>{ document.getElementById("askBtn").style.display="none"; });
+function askSelection(){
+  document.getElementById("askBtn").style.display="none";
+  if(!pendingSel) return;
+  const sb=document.getElementById("sidebar"), c=document.getElementById("mainContainer");
+  if(!sb.classList.contains("open")){
+    sb.classList.add("open"); c.classList.add("sidebar-open");
+    if(!document.getElementById("chatMessages").hasChildNodes())
+      addMessage("ai","👋 你好！可以直接问任何英语问题；选中词句点「问 AI」，我会结合本文用法一起解答。");
+  }
+  updateContext(pendingSel);
+  document.getElementById("chatInput").focus();
+}
 
 /* ---------- SSE 流式 ---------- */
 async function streamRequest(url, body, onDelta, onDone, onError){
@@ -438,7 +465,7 @@ function notesToolbar(){
 }
 function renderNotes(markdown){
   const panel=document.getElementById("panel-notes");
-  panel.innerHTML=notesToolbar()+'<div id="notesBody">'+md.render(markdown)+'</div>';
+  panel.innerHTML=notesToolbar()+'<div id="notesBody">'+renderMd(markdown)+'</div>';
   markVocab(panel.querySelector("#notesBody"));
 }
 
@@ -457,7 +484,7 @@ async function analyze(){
   const body=panel.querySelector("#notesBody");
 
   let acc="", pending=false;
-  const flush=()=>{ pending=false; body.innerHTML=md.render(acc); markVocab(body); };
+  const flush=()=>{ pending=false; body.innerHTML=renderMd(acc); markVocab(body); };
   await streamRequest("/analyze",
     {article, api_key:cfg.key, base_url:cfg.base, model:cfg.model},
     (delta)=>{ acc+=delta; if(!pending){ pending=true; requestAnimationFrame(flush); } },
@@ -562,7 +589,7 @@ function answerQuiz(qi,oi){
 /* ---------- 导出 ---------- */
 function exportNotesPDF(){
   if(!lastMarkdown){ alert("还没有笔记可导出"); return; }
-  const tmp=document.createElement("div"); tmp.innerHTML=md.render(lastMarkdown); markVocab(tmp);
+  const tmp=document.createElement("div"); tmp.innerHTML=renderMd(lastMarkdown); markVocab(tmp);
   openPrintWindow("外刊学习笔记", notesPrintCSS(), tmp.innerHTML);
 }
 function exportChatMD(){
@@ -576,7 +603,7 @@ function exportChatPDF(){
   let inner="";
   chatHistory.forEach(m=>{
     if(m.role==="user"){ inner+='<div class="qa">'; if(m.context) inner+='<div class="ctx">上下文：'+escapeHtml(m.context)+'</div>'; inner+='<div class="q"><b>🧑 你：</b>'+escapeHtml(m.content)+'</div></div>'; }
-    else inner+='<div class="a"><b>🤖 AI：</b>'+md.render(m.content)+'</div>';
+    else inner+='<div class="a"><b>🤖 AI：</b>'+renderMd(m.content)+'</div>';
   });
   openPrintWindow("AI 导师对话记录", chatPrintCSS(), inner);
 }
@@ -675,13 +702,13 @@ async function sendChat(){
   const ctx=selectedText||""; chatHistory.push({role:"user",content:message,context:ctx}); input.value="";
   const aiDiv=addMessage("ai","",true); aiDiv.classList.add("cursor");
   let acc="", pending=false;
-  const flush=()=>{ pending=false; aiDiv.innerHTML=md.render(acc); document.getElementById("chatMessages").scrollTop=1e9; };
+  const flush=()=>{ pending=false; aiDiv.innerHTML=renderMd(acc); document.getElementById("chatMessages").scrollTop=1e9; };
   busy=true;
   await streamRequest("/chat",
     {api_key:cfg.key,base_url:cfg.base,model:cfg.model,message,context:ctx,article:lastMarkdown,
      history:chatHistory.slice(-6).map(h=>({role:h.role,content:h.content}))},
     (delta)=>{ acc+=delta; if(!pending){ pending=true; requestAnimationFrame(flush); } },
-    ()=>{ aiDiv.classList.remove("cursor"); aiDiv.innerHTML=md.render(acc); chatHistory.push({role:"assistant",content:acc}); persistSession(); busy=false; },
+    ()=>{ aiDiv.classList.remove("cursor"); aiDiv.innerHTML=renderMd(acc); chatHistory.push({role:"assistant",content:acc}); persistSession(); busy=false; },
     (err)=>{ aiDiv.classList.remove("cursor"); aiDiv.innerHTML="❌ "+escapeHtml(err); busy=false; }
   );
 }
