@@ -213,7 +213,10 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
     </div>
     <div class="card-actions">
       <span class="key-hint" id="keyHint"></span>
-      <button class="btn" id="analyzeBtn" onclick="analyze()">🚀 开始分析</button>
+      <div style="display:flex;gap:.6rem">
+        <button class="btn-secondary" onclick="clearAll()">🗑️ 清空重来</button>
+        <button class="btn" id="analyzeBtn" onclick="analyze()">🚀 开始分析</button>
+      </div>
     </div>
   </div>
 
@@ -237,6 +240,7 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
   <div class="sidebar-header">
     <span>💬 AI 导师</span>
     <div class="tools">
+      <button class="btn-secondary" onclick="clearChat()">🧹 清空</button>
       <button class="btn-secondary" onclick="exportChatMD()">⬇️ MD</button>
       <button class="btn-secondary" onclick="exportChatPDF()">🖨️ PDF</button>
       <button class="close-x" onclick="toggleSidebar()">✕</button>
@@ -445,6 +449,7 @@ async function analyze(){
   if(!article){ alert("请先粘贴文章"); return; }
 
   busy=true; quizBuilt=false; quizData=null;
+  resetChat();   // 新文章 = 独立会话，清掉上一篇的对话
   const btn=document.getElementById("analyzeBtn"); btn.disabled=true; btn.textContent="⏳ 分析中...";
   showWorkspace(); setActiveTab("notes");
   const panel=document.getElementById("panel-notes");
@@ -631,6 +636,28 @@ function toCSV(rows){ return rows.map(r=>r.map(c=>'"'+String(c==null?"":c).repla
 function downloadText(text, filename, mime){
   const blob=new Blob([text],{type:mime}), url=URL.createObjectURL(blob);
   const a=document.createElement("a"); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
+}
+
+/* ---------- 清空 ---------- */
+function resetChat(){
+  chatHistory=[]; selectedText="";
+  document.getElementById("chatMessages").innerHTML="";
+  updateContext("");
+}
+function clearChat(){
+  if(chatHistory.length && !confirm("清空当前对话记录？")) return;
+  resetChat(); persistSession(); toast("对话已清空");
+}
+function clearAll(){
+  if(!confirm("清空当前文章、笔记、闪卡、词汇、练习题和对话，重新开始？（API 设置会保留）")) return;
+  document.getElementById("articleInput").value="";
+  lastMarkdown=""; cards=[]; ci=0; flipped=false; quizData=null; quizBuilt=false;
+  resetChat();
+  ["notes","cards","vocab","quiz"].forEach(n=>{ document.getElementById("panel-"+n).innerHTML=""; });
+  document.getElementById("workspace").style.display="none";
+  setActiveTab("notes");
+  try{ localStorage.removeItem("jh_session"); }catch(e){}
+  toast("已清空，可以开始新的一篇");
 }
 
 /* ---------- 侧边栏聊天 ---------- */
