@@ -15,7 +15,7 @@ app = Flask(__name__)
 app.config["JSON_AS_ASCII"] = False
 
 # ---------------------------------------------------------------------------
-# 笔记生成提示词（在 v2 基础上：保留五板块原样；只新增“整理版面”“不重复罗列句子”“技巧用三级标题”几条）
+# 笔记生成提示词（保留脚注；含选择标准 + 脚注纪律 + 长难句语法板块）
 # ---------------------------------------------------------------------------
 ANALYZE_SYSTEM_PROMPT = """分析下面的英文文章，做成一份个人学习笔记。只输出最终结果，不要任何开场白或结语。
 
@@ -201,10 +201,8 @@ def exercises():
             temperature=0.5, max_tokens=3000,
         )
         raw = resp.choices[0].message.content.strip()
-        # 去掉可能的代码块围栏
         raw = re.sub(r"^```(?:json)?\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw).strip()
-        # 容错：截取第一个 { 到最后一个 }
         if not raw.startswith("{"):
             m = re.search(r"\{.*\}", raw, re.S)
             if m:
