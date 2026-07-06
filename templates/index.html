@@ -92,7 +92,7 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
 #notesBody .footnotes{margin-top:2.4rem;border-top:1px solid var(--border);padding-top:1.2rem}
 #notesBody .footnotes ol{list-style:none;padding:0;counter-reset:fn}
 #notesBody .footnotes li{background:#fafaf9;border:1px solid #eae7e2;border-radius:10px;
-  padding:1rem 1.2rem 1rem 2.6rem;margin-bottom:.9rem;position:relative;line-height:1.75}
+  padding:1rem 1.2rem 1rem 2.6rem;margin-bottom:.9rem;position:relative;line-height:1.85}
 #notesBody .footnotes li::before{counter-increment:fn;content:counter(fn)". ";position:absolute;left:1rem;font-weight:700;color:var(--brand)}
 .cursor::after{content:"▋";color:var(--brand);animation:blink 1s steps(2) infinite}
 @keyframes blink{0%,50%{opacity:1}50.01%,100%{opacity:0}}
@@ -199,7 +199,7 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
       <div class="step"><span class="step-number">2</span>
         <div class="step-content"><strong>粘贴文章</strong>直接把外刊复制进来，分栏、断行、乱码都行，AI 会自动整理。</div></div>
       <div class="step"><span class="step-number">3</span>
-        <div class="step-content"><strong>笔记 → 闪卡 → 词汇表 → 练习题</strong>生成笔记后，用上方标签切换其它功能；选中词句可在侧边栏提问。</div></div>
+        <div class="step-content"><strong>笔记 → 闪卡 → 词汇表 → 练习题</strong>生成笔记后，用上方标签切换其它功能；选中词句点「问 AI」提问。</div></div>
     </div>
     <div class="legend">
       <span><span class="v">红色词汇</span> = 重点词组</span>
@@ -303,6 +303,7 @@ let chatHistory = [];
 let busy = false;
 let cards = [], ci = 0, flipped = false;
 let quizData = null, quizBuilt = false;
+let pendingSel = "";
 
 window.onload = () => {
   const sel = document.getElementById("provider");
@@ -372,7 +373,7 @@ function toggleSidebar(){
   const sb=document.getElementById("sidebar"), c=document.getElementById("mainContainer");
   sb.classList.toggle("open"); c.classList.toggle("sidebar-open");
   if(sb.classList.contains("open") && !document.getElementById("chatMessages").hasChildNodes())
-    addMessage("ai","👋 你好！可以直接问任何英语问题；在笔记里选中词句，我会结合本文的用法一起解答。");
+    addMessage("ai","👋 你好！可以直接问任何英语问题；在笔记里选中词句点「问 AI」，我会结合本文用法一起解答。");
 }
 function updateContext(text){
   selectedText=text;
@@ -380,8 +381,8 @@ function updateContext(text){
   if(text){ span.innerHTML=md.renderInline("**"+text.replace(/\*/g,"\\*")+"**"); bar.classList.add("show"); }
   else{ span.innerHTML=""; bar.classList.remove("show"); }
 }
+
 /* 选中文字后：只在旁边冒出「问 AI」小按钮，点了才打开助手 */
-let pendingSel="";
 document.addEventListener("mouseup",(e)=>{
   setTimeout(()=>{
     const btn=document.getElementById("askBtn");
@@ -459,6 +460,14 @@ function markVocab(root){
     if(n && n.classList && n.classList.contains("footnote-ref")) s.classList.add("vocab");
   });
 }
+/* 脚注区内：在 📖联动 / 💡仿写 等标记前自动断行（无论模型有没有插 <br>） */
+function fixFootnoteBreaks(root){
+  root.querySelectorAll(".footnotes li").forEach(li=>{
+    li.innerHTML=li.innerHTML.replace(/(?:<br\s*\/?>\s*)?(📖|💡|🎬|🗣️|✍️|📝)/g,"<br>$1");
+  });
+}
+function enhanceNotes(root){ markVocab(root); fixFootnoteBreaks(root); }
+
 function notesToolbar(){
   return '<div class="result-toolbar"><button class="btn-secondary" onclick="copyResult()">📋 复制 Markdown</button>'
     +'<button class="btn-secondary" onclick="exportNotesPDF()">🖨️ 导出笔记 PDF</button></div>';
@@ -466,7 +475,7 @@ function notesToolbar(){
 function renderNotes(markdown){
   const panel=document.getElementById("panel-notes");
   panel.innerHTML=notesToolbar()+'<div id="notesBody">'+renderMd(markdown)+'</div>';
-  markVocab(panel.querySelector("#notesBody"));
+  enhanceNotes(panel.querySelector("#notesBody"));
 }
 
 async function analyze(){
@@ -484,7 +493,7 @@ async function analyze(){
   const body=panel.querySelector("#notesBody");
 
   let acc="", pending=false;
-  const flush=()=>{ pending=false; body.innerHTML=renderMd(acc); markVocab(body); };
+  const flush=()=>{ pending=false; body.innerHTML=renderMd(acc); enhanceNotes(body); };
   await streamRequest("/analyze",
     {article, api_key:cfg.key, base_url:cfg.base, model:cfg.model},
     (delta)=>{ acc+=delta; if(!pending){ pending=true; requestAnimationFrame(flush); } },
@@ -586,10 +595,32 @@ function answerQuiz(qi,oi){
   exp.innerHTML="<strong>"+head+"</strong><br>"+escapeHtml(q.explanation||"");
 }
 
+/* ---------- 清空 ---------- */
+function resetChat(){
+  chatHistory=[]; selectedText="";
+  document.getElementById("chatMessages").innerHTML="";
+  updateContext("");
+}
+function clearChat(){
+  if(chatHistory.length && !confirm("清空当前对话记录？")) return;
+  resetChat(); persistSession(); toast("对话已清空");
+}
+function clearAll(){
+  if(!confirm("清空当前文章、笔记、闪卡、词汇、练习题和对话，重新开始？（API 设置会保留）")) return;
+  document.getElementById("articleInput").value="";
+  lastMarkdown=""; cards=[]; ci=0; flipped=false; quizData=null; quizBuilt=false;
+  resetChat();
+  ["notes","cards","vocab","quiz"].forEach(n=>{ document.getElementById("panel-"+n).innerHTML=""; });
+  document.getElementById("workspace").style.display="none";
+  setActiveTab("notes");
+  try{ localStorage.removeItem("jh_session"); }catch(e){}
+  toast("已清空，可以开始新的一篇");
+}
+
 /* ---------- 导出 ---------- */
 function exportNotesPDF(){
   if(!lastMarkdown){ alert("还没有笔记可导出"); return; }
-  const tmp=document.createElement("div"); tmp.innerHTML=renderMd(lastMarkdown); markVocab(tmp);
+  const tmp=document.createElement("div"); tmp.innerHTML=renderMd(lastMarkdown); enhanceNotes(tmp);
   openPrintWindow("外刊学习笔记", notesPrintCSS(), tmp.innerHTML);
 }
 function exportChatMD(){
@@ -638,10 +669,10 @@ function notesPrintCSS(){
     +'.doc-title{text-align:center;font-size:1.6rem;margin-bottom:1.5rem}'
     +'h2{margin-top:1.9rem;font-size:1.3rem;border-bottom:2px solid #eee;padding-bottom:.3rem}'
     +'h3{margin-top:1.4rem;color:#333}'
-    +'p{margin:.7rem 0}ol>li{margin-bottom:1rem}ul>li{margin-bottom:.45rem}li{line-height:1.75}'
+    +'p{margin:.7rem 0}ol>li{margin-bottom:1rem}ul>li{margin-bottom:.45rem}li{line-height:1.8}'
     +'strong{color:#4a4a4a}strong.vocab{color:#c0392b}em{color:#2f6ca8;font-style:italic}'
     +'table{border-collapse:collapse;width:100%;margin:1rem 0}th,td{border:1px solid #ccc;padding:.45rem .6rem;font-size:.9rem;text-align:left}th{background:#f6f2ec}'
-    +'.footnotes{margin-top:2rem;border-top:1px solid #ddd;padding-top:1rem;font-size:.9rem}.footnotes ol{padding-left:1.2rem}.footnotes li{margin-bottom:.6rem}'
+    +'.footnotes{margin-top:2rem;border-top:1px solid #ddd;padding-top:1rem;font-size:.9rem}.footnotes ol{padding-left:1.2rem}.footnotes li{margin-bottom:.6rem;line-height:1.8}'
     +'@page{margin:1.6cm}';
 }
 function chatPrintCSS(){
@@ -663,28 +694,6 @@ function toCSV(rows){ return rows.map(r=>r.map(c=>'"'+String(c==null?"":c).repla
 function downloadText(text, filename, mime){
   const blob=new Blob([text],{type:mime}), url=URL.createObjectURL(blob);
   const a=document.createElement("a"); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
-}
-
-/* ---------- 清空 ---------- */
-function resetChat(){
-  chatHistory=[]; selectedText="";
-  document.getElementById("chatMessages").innerHTML="";
-  updateContext("");
-}
-function clearChat(){
-  if(chatHistory.length && !confirm("清空当前对话记录？")) return;
-  resetChat(); persistSession(); toast("对话已清空");
-}
-function clearAll(){
-  if(!confirm("清空当前文章、笔记、闪卡、词汇、练习题和对话，重新开始？（API 设置会保留）")) return;
-  document.getElementById("articleInput").value="";
-  lastMarkdown=""; cards=[]; ci=0; flipped=false; quizData=null; quizBuilt=false;
-  resetChat();
-  ["notes","cards","vocab","quiz"].forEach(n=>{ document.getElementById("panel-"+n).innerHTML=""; });
-  document.getElementById("workspace").style.display="none";
-  setActiveTab("notes");
-  try{ localStorage.removeItem("jh_session"); }catch(e){}
-  toast("已清空，可以开始新的一篇");
 }
 
 /* ---------- 侧边栏聊天 ---------- */
