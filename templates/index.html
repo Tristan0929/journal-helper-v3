@@ -109,7 +109,18 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
 .fc-hint{margin-top:1rem;font-size:.8rem;color:var(--muted)}
 .fc-def{font-size:1.1rem;line-height:1.6}
 .fc-scene{margin-top:.9rem;font-size:.85rem;color:var(--muted)}
-.fc-controls{display:flex;gap:.6rem;justify-content:center}
+.fc-controls{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap}
+.card-stats{text-align:center;font-size:.82rem;color:var(--muted);margin-bottom:.4rem}
+.rate-row{display:flex;gap:.6rem;justify-content:center;margin-top:.9rem}
+.rate{border:none;border-radius:9px;padding:.5rem 1.2rem;font-size:.9rem;font-weight:600;cursor:pointer;color:#fff}
+.rate.r0{background:#c0392b}.rate.r1{background:#d99a1c}.rate.r2{background:#3a9d5d}
+.rate:hover{opacity:.9}
+.shadow-result{text-align:center;margin-top:.9rem;font-size:.9rem;min-height:1.2rem}
+.cloze-card{max-width:480px;margin:1.4rem auto}
+.cloze-def{border:1px solid var(--border);border-radius:12px;padding:1.2rem;background:#faf7f3;font-size:1.05rem;line-height:1.6;text-align:center}
+#clozeInput{width:100%;margin-top:1rem;padding:.7rem .9rem;border:1px solid var(--border);border-radius:10px;font-size:1rem;text-align:center}
+#clozeInput:focus{outline:none;border-color:var(--brand)}
+.cloze-card .fc-controls{margin-top:1rem}
 
 /* vocab */
 .vocab-table{border-collapse:collapse;width:100%}
@@ -147,6 +158,16 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
 .dive-body ul,.dive-body ol{margin:.6rem 0;padding-left:1.5rem}
 .dive-body li{margin-bottom:.4rem}
 .dive-body strong{color:#333}
+/* 讨论区 */
+.discuss{margin-top:1.6rem;border-top:1px solid var(--border);padding-top:1.2rem}
+.discuss-head{font-weight:600;font-size:.95rem;margin-bottom:.8rem;overflow:hidden}
+.discuss-thread{display:flex;flex-direction:column;gap:.7rem;margin-bottom:.9rem}
+.dmsg{padding:.6rem .9rem;border-radius:10px;line-height:1.6;font-size:.92rem;max-width:92%}
+.dmsg.user{align-self:flex-end;background:#efece8}
+.dmsg.assistant{align-self:flex-start;background:#fff;border:1px solid var(--border)}
+.dmsg.assistant p{margin:.35rem 0}
+.discuss-input{display:flex;gap:.5rem;align-items:flex-end}
+.discuss-input textarea{flex:1;border:1px solid var(--border);border-radius:9px;padding:.6rem;font-family:inherit;font-size:.92rem;resize:vertical;min-height:2.6rem}
 
 /* sidebar */
 .sidebar{position:fixed;top:0;right:calc(-1 * var(--sidebar-width) - 10px);width:var(--sidebar-width);
@@ -191,6 +212,10 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
 .field .hint{font-size:.76rem;color:var(--muted)}.field .hint a{color:var(--brand)}
 .modal-row{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.4rem}
 .saved-tag{font-size:.78rem;color:#2e7d32;display:none}.saved-tag.show{display:inline}
+.box.tut{max-width:640px}
+.box.tut h3{font-size:1rem;margin:1.2rem 0 .4rem;color:var(--brand)}
+.box.tut p{font-size:.9rem;line-height:1.7;color:#333;margin-bottom:.3rem}
+.box.tut .legend{margin:.5rem 0 0}
 
 @media (max-width:640px){
   .sidebar{width:100vw;right:-101vw}.container.sidebar-open{margin-right:0}
@@ -206,24 +231,9 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
       <h1>📖 外刊阅读助手 <span class="badge">AI 互动版</span></h1>
       <p class="subtitle">粘贴分栏乱码也没关系，AI 会帮你理顺版面并做成笔记</p>
     </div>
-    <button class="icon-btn" onclick="openSettings()">⚙️ 设置 API <span class="saved-tag" id="savedTag">✓已保存</span></button>
-  </div>
-
-  <div class="card guide">
-    <h2>⚡ 三步开始</h2>
-    <div class="steps">
-      <div class="step"><span class="step-number">1</span>
-        <div class="step-content"><strong>填 Key</strong>点右上角「设置 API」，选服务商并填入你自己的 API Key（默认 DeepSeek）。</div></div>
-      <div class="step"><span class="step-number">2</span>
-        <div class="step-content"><strong>粘贴文章</strong>直接把外刊复制进来，分栏、断行、乱码都行，AI 会自动整理。</div></div>
-      <div class="step"><span class="step-number">3</span>
-        <div class="step-content"><strong>笔记 → 闪卡 → 词汇表 → 练习题</strong>生成笔记后，用上方标签切换其它功能；选中词句点「问 AI」提问。</div></div>
-    </div>
-    <div class="legend">
-      <span><span class="v">红色词汇</span> = 重点词组</span>
-      <span><span class="s">蓝色斜体</span> = 精彩句子</span>
-      <span>灰色加粗 = 结构标签</span>
-      <span>（导出 PDF 时颜色保留）</span>
+    <div style="display:flex;gap:.5rem">
+      <button class="icon-btn" onclick="openTutorial()">📖 使用教程</button>
+      <button class="icon-btn" onclick="openSettings()">⚙️ 设置 API <span class="saved-tag" id="savedTag">✓已保存</span></button>
     </div>
   </div>
 
@@ -265,7 +275,7 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
     <span>💬 AI 导师</span>
     <div class="tools">
       <button class="btn-secondary" onclick="clearChat()">🧹 清空</button>
-      <button class="btn-secondary" onclick="exportChatMD()">⬇️ MD</button>
+      <button class="btn-secondary" onclick="exportChatMD()">📋 MD</button>
       <button class="btn-secondary" onclick="exportChatPDF()">🖨️ PDF</button>
       <button class="close-x" onclick="toggleSidebar()">✕</button>
     </div>
@@ -310,6 +320,37 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
   </div>
 </div>
 
+<div class="modal" id="tutModal">
+  <div class="box tut">
+    <h2>📖 使用教程</h2>
+    <p class="tip">一个把外刊文章变成个人学习笔记、并练读写听说的小工具。所有数据只存在你自己的浏览器里。</p>
+
+    <h3>① 准备</h3>
+    <p>点右上角 <b>⚙️ 设置 API</b>，填入你自己的 API Key（默认 DeepSeek，也可选 OpenAI / Kimi / 智谱 等）。原文语种默认<b>自动识别</b>，日/德/韩/西等外刊都行，识别不准可手动指定。密钥只存在你浏览器，服务器只转发不保存。</p>
+
+    <h3>② 生成笔记</h3>
+    <p>把外刊文章直接粘进输入框——<b>分栏、断行、乱码都不用管</b>，AI 会自动理顺版面。点<b>🚀 开始分析</b>，笔记会像打字一样流式出现；中途发现跑偏，点<b>⏹ 停止重生成</b>可立刻中断、省 token。笔记含六块：文章 / 词汇精析 / 长难句语法 / 句子赏析 / 写作手法 / 背诵速查表。</p>
+    <p class="legend"><span class="v">红色加粗</span>=重点词汇 &nbsp; <span class="s">蓝色斜体</span>=精彩句子 &nbsp; 灰色加粗=结构标签（导出 PDF 颜色保留）。</p>
+
+    <h3>③ 上方标签切换功能</h3>
+    <p><b>🎴 闪卡</b>：翻卡背词，可 <b>🔊 朗读</b>、<b>🎤 跟读</b>（Chrome）、<b>✍️ 拼写自测</b>；翻面后用 <b>不认识 / 模糊 / 认识</b> 记熟练度（简易 Anki），可「只复习不熟的」，也能导出 Anki CSV。<br>
+    <b>📇 词汇表</b>：单独看速查表，导出 PDF / CSV。<br>
+    <b>✍️ 练习题</b>：左边文章、右边题目；点「生成题目」才出 5 道阅读选择题，即时判分。<br>
+    <b>🌍 深度思考</b>：点「生成」出一段全英文批判性分析；下方可用英文写评论，AI <b>先润色你的表达再和你讨论</b>（练写作）。原文和讨论都能各自导 PDF。</p>
+
+    <h3>④ 选中提问</h3>
+    <p>在笔记里选中任意词句，旁边冒出 <b>💬 问 AI</b>，点它打开侧边栏、带着上下文提问。可以自由问任何问题。</p>
+
+    <h3>⑤ 保存与清空</h3>
+    <p>文章、笔记、问答、深度思考讨论、闪卡熟练度都会<b>自动存在本地浏览器</b>，刷新/关掉再打开都还在，直到你点 <b>🗑️ 清空重来</b> 开始下一篇。</p>
+
+    <h3>⑥ 导出</h3>
+    <p>Markdown 一律「复制」（省得下载）；PDF 各板块单独下载。打印对话框记得勾「背景图形」以保留配色。</p>
+
+    <div class="modal-row"><button class="btn" onclick="closeTutorial()">知道了</button></div>
+  </div>
+</div>
+
 <script>
 "use strict";
 const md = window.markdownit({html:false,breaks:true,linkify:true}).use(window.markdownitFootnote);
@@ -338,6 +379,7 @@ let busy = false;
 let cards = [], ci = 0, flipped = false;
 let quizData = null, quizBuilt = false;
 let pendingSel = "";
+let familiarity = {}, onlyWeak = false;   // 闪卡熟练度：term -> 0不认识/1模糊/2认识
 
 window.onload = () => {
   const sel = document.getElementById("provider");
@@ -363,6 +405,8 @@ function openSettings(){
   document.getElementById("modal").classList.add("open");
 }
 function closeSettings(){ document.getElementById("modal").classList.remove("open"); }
+function openTutorial(){ document.getElementById("tutModal").classList.add("open"); }
+function closeTutorial(){ document.getElementById("tutModal").classList.remove("open"); }
 function onProviderChange(){
   const p=document.getElementById("provider").value, preset=PROVIDERS[p];
   document.getElementById("baseUrl").value=preset.base;
@@ -391,7 +435,11 @@ function refreshKeyHint(){
 /* ---------- 会话保存/恢复 ---------- */
 function persistSession(){
   try{ localStorage.setItem("jh_session",JSON.stringify({
-    article:document.getElementById("articleInput").value, markdown:lastMarkdown, chat:chatHistory })); }catch(e){}
+    article:document.getElementById("articleInput").value, markdown:lastMarkdown, chat:chatHistory,
+    dive:{md:diveMarkdown,built:diveBuilt,chat:diveChat},
+    fam:familiarity,
+    quiz:{built:quizBuilt,data:quizData}
+  })); }catch(e){}
 }
 function restoreSession(){
   try{
@@ -401,6 +449,9 @@ function restoreSession(){
     if(s.markdown){ lastMarkdown=s.markdown; renderNotes(lastMarkdown); showWorkspace(); }
     if(Array.isArray(s.chat)){ chatHistory=s.chat;
       chatHistory.forEach(m=>{ if(m.role==="user") addMessage("user",m.content); else addMessage("ai",renderMd(m.content),true); }); }
+    if(s.dive){ diveMarkdown=s.dive.md||""; diveBuilt=!!s.dive.built; diveChat=Array.isArray(s.dive.chat)?s.dive.chat:[]; }
+    if(s.fam && typeof s.fam==="object") familiarity=s.fam;
+    if(s.quiz){ quizBuilt=!!s.quiz.built; quizData=s.quiz.data||null; }
   }catch(e){}
 }
 
@@ -452,27 +503,31 @@ function askSelection(){
   document.getElementById("chatInput").focus();
 }
 
-/* ---------- SSE 流式 ---------- */
+/* ---------- SSE 流式（可中断） ---------- */
+let activeController=null;
+function stopGenerating(){ if(activeController){ try{ activeController.abort(); }catch(e){} activeController=null; } busy=false; }
 async function streamRequest(url, body, onDelta, onDone, onError){
+  activeController=new AbortController();
+  const signal=activeController.signal;
   let resp;
-  try{ resp=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); }
-  catch(e){ onError("网络请求失败："+e.message); return; }
-  if(!resp.ok){ try{ const j=await resp.json(); onError(j.error||("HTTP "+resp.status)); }catch{ onError("HTTP "+resp.status); } return; }
+  try{ resp=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),signal}); }
+  catch(e){ activeController=null; if(e.name==="AbortError") return; onError("网络请求失败："+e.message); return; }
+  if(!resp.ok){ activeController=null; try{ const j=await resp.json(); onError(j.error||("HTTP "+resp.status)); }catch{ onError("HTTP "+resp.status); } return; }
   const reader=resp.body.getReader(), dec=new TextDecoder(); let buf="";
   while(true){
-    let chunk; try{ chunk=await reader.read(); }catch(e){ onError("读取中断："+e.message); return; }
+    let chunk; try{ chunk=await reader.read(); }catch(e){ activeController=null; if(e.name==="AbortError") return; onError("读取中断："+e.message); return; }
     if(chunk.done) break;
     buf+=dec.decode(chunk.value,{stream:true});
     const parts=buf.split("\n\n"); buf=parts.pop();
     for(const p of parts){
       const line=p.trim(); if(!line.startsWith("data:")) continue;
       let data; try{ data=JSON.parse(line.slice(5).trim()); }catch{ continue; }
-      if(data.error){ onError(data.error); return; }
-      if(data.done){ onDone(); return; }
+      if(data.error){ activeController=null; onError(data.error); return; }
+      if(data.done){ activeController=null; onDone(); return; }
       if(data.delta) onDelta(data.delta);
     }
   }
-  onDone();
+  activeController=null; onDone();
 }
 
 /* ---------- 标签切换 ---------- */
@@ -520,14 +575,14 @@ function renderNotes(markdown){
 }
 
 async function analyze(){
-  if(busy) return;
+  if(busy){ stopGenerating(); endAnalyze(); toast("已停止，可重新分析"); return; }  // 生成中再点=中断
   if(!cfg.key){ openSettings(); return; }
   const article=document.getElementById("articleInput").value.trim();
   if(!article){ alert("请先粘贴文章"); return; }
 
-  busy=true; quizBuilt=false; quizData=null; diveBuilt=false; diveMarkdown="";
+  busy=true; quizBuilt=false; quizData=null; diveBuilt=false; diveMarkdown=""; diveChat=[]; diveAcc="";
   resetChat();   // 新文章 = 独立会话，清掉上一篇的对话
-  const btn=document.getElementById("analyzeBtn"); btn.disabled=true; btn.textContent="⏳ 分析中...";
+  const btn=document.getElementById("analyzeBtn"); btn.textContent="⏹ 停止重生成";
   showWorkspace(); setActiveTab("notes");
   const panel=document.getElementById("panel-notes");
   panel.innerHTML='<div id="notesBody" class="cursor"></div>';
@@ -558,33 +613,98 @@ function extractVocab(){
   }).filter(r=>r.term);
 }
 
-/* ---------- 闪卡 ---------- */
+/* ---------- 闪卡（Anki 式熟练度 + 朗读/跟读/拼写自测） ---------- */
+let clozeMode=false;
+function statsHtml(){
+  const all=extractVocab(); let k=0,m=0,n=0,u=0;
+  all.forEach(c=>{ const l=familiarity[c.term]; if(l===2)k++; else if(l===1)m++; else if(l===0)n++; else u++; });
+  return '认识 '+k+' · 模糊 '+m+' · 不认识 '+n+(u?' · 未评 '+u:'');
+}
+function updateStats(){ const el=document.getElementById("cardStats"); if(el) el.textContent=statsHtml(); }
+function toggleWeak(){ onlyWeak=!onlyWeak; buildCards(); }
 function buildCards(){
-  cards=extractVocab(); ci=0; flipped=false;
+  const all=extractVocab();
   const p=document.getElementById("panel-cards");
-  if(!cards.length){ p.innerHTML='<p class="empty">还没有词汇，先生成笔记。</p>'; return; }
-  p.innerHTML='<div class="panel-head"><h2>🎴 闪卡 <span class="muted-count" id="cardCount"></span></h2>'
-    +'<div><button class="btn-secondary" onclick="shuffleCards()">🔀 打乱</button> '
-    +'<button class="btn-secondary" onclick="exportCardsCSV()">⬇️ 导出 Anki CSV</button></div></div>'
+  if(!all.length){ p.innerHTML='<p class="empty">还没有词汇，先生成笔记。</p>'; return; }
+  cards = onlyWeak ? all.filter(c=>familiarity[c.term]!==2) : all;
+  if(!cards.length){ cards=all; onlyWeak=false; toast("已全部认识，显示全部"); }
+  ci=0; flipped=false;
+  const head='<div class="panel-head"><h2>🎴 闪卡 <span class="muted-count" id="cardCount"></span></h2>'
+    +'<div><button class="btn-secondary" onclick="toggleWeak()">'+(onlyWeak?"📚 全部":"🎯 只复习不熟")+'</button> '
+    +'<button class="btn-secondary" onclick="toggleCloze()">'+(clozeMode?"🎴 卡片模式":"✍️ 拼写自测")+'</button> '
+    +'<button class="btn-secondary" onclick="shuffleCards()">🔀 打乱</button> '
+    +'<button class="btn-secondary" onclick="exportCardsCSV()">⬇️ Anki CSV</button></div></div>'
+    +'<div class="card-stats" id="cardStats">'+statsHtml()+'</div>';
+  if(clozeMode){ p.innerHTML=head+clozeCardHtml(); renderCloze(); return; }
+  p.innerHTML=head
     +'<div class="flashcard" onclick="flipCard()"><div class="fc-inner" id="fcInner">'
     +'<div class="fc-face fc-front" id="fcFront"></div><div class="fc-face fc-back" id="fcBack"></div></div></div>'
-    +'<div class="fc-controls"><button class="btn-secondary" onclick="prevCard(event)">← 上一张</button>'
+    +'<div class="fc-controls"><button class="btn-secondary" onclick="prevCard(event)">←</button>'
+    +'<button class="btn-secondary" onclick="speakCard(event)">🔊 朗读</button>'
+    +(shadowSupported()?'<button class="btn-secondary" onclick="shadowCard(event)">🎤 跟读</button>':'')
     +'<button class="btn-secondary" onclick="flipCard()">翻面</button>'
-    +'<button class="btn-secondary" onclick="nextCard(event)">下一张 →</button></div>';
+    +'<button class="btn-secondary" onclick="nextCard(event)">→</button></div>'
+    +'<div class="rate-row"><button class="rate r0" onclick="rateCard(0)">不认识</button>'
+    +'<button class="rate r1" onclick="rateCard(1)">模糊</button>'
+    +'<button class="rate r2" onclick="rateCard(2)">认识</button></div>'
+    +'<div id="shadowResult" class="shadow-result"></div>';
   renderCard();
 }
+function fmtLevel(term){ const l=familiarity[term]; return l===2?"✅认识":l===1?"🟡模糊":l===0?"🔴不认识":""; }
 function renderCard(){
   const c=cards[ci]; if(!c) return;
-  document.getElementById("fcFront").innerHTML='<div class="fc-term">'+escapeHtml(c.term)+'</div><div class="fc-hint">点击翻面</div>';
+  document.getElementById("fcFront").innerHTML='<div class="fc-term">'+escapeHtml(c.term)+'</div><div class="fc-hint">点击翻面'+(fmtLevel(c.term)?" · "+fmtLevel(c.term):"")+'</div>';
   document.getElementById("fcBack").innerHTML='<div class="fc-def">'+escapeHtml(c.def)+'</div>'
     +(c.scene?'<div class="fc-scene">场景：'+escapeHtml(c.scene)+'</div>':'');
   document.getElementById("fcInner").classList.toggle("flipped",flipped);
   document.getElementById("cardCount").textContent=(ci+1)+" / "+cards.length;
+  const sr=document.getElementById("shadowResult"); if(sr) sr.textContent="";
 }
-function flipCard(){ flipped=!flipped; document.getElementById("fcInner").classList.toggle("flipped",flipped); }
-function prevCard(e){ if(e) e.stopPropagation(); ci=(ci-1+cards.length)%cards.length; flipped=false; renderCard(); }
-function nextCard(e){ if(e) e.stopPropagation(); ci=(ci+1)%cards.length; flipped=false; renderCard(); }
-function shuffleCards(){ for(let i=cards.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [cards[i],cards[j]]=[cards[j],cards[i]]; } ci=0; flipped=false; renderCard(); }
+function rateCard(level){
+  const c=cards[ci]; if(!c) return;
+  familiarity[c.term]=level; persistSession(); updateStats();
+  if(ci<cards.length-1){ ci++; flipped=false; renderCard(); }
+  else { toast("本轮完成 🎉"); }
+}
+function speakCard(e){ if(e) e.stopPropagation(); const c=cards[ci]; if(c) speak(c.term); }
+function shadowCard(e){ if(e) e.stopPropagation(); const c=cards[ci]; if(!c) return;
+  const sr=document.getElementById("shadowResult"); sr.textContent="🎤 听你读…";
+  shadowListen(c.term,(heard)=>{
+    const ok=looseMatch(heard,c.term);
+    sr.innerHTML=(ok?'<span style="color:#2e7d32">✅ 很准！</span>':'<span style="color:#c0392b">再试试</span>')+' 你读的：“'+escapeHtml(heard)+'”';
+  });
+}
+/* 拼写自测（cloze）*/
+function toggleCloze(){ clozeMode=!clozeMode; buildCards(); }
+function clozeCardHtml(){
+  return '<div class="cloze-card"><div class="cloze-def" id="clozeDef"></div>'
+    +'<input id="clozeInput" placeholder="拼出这个词/词组…" onkeypress="if(event.key===\'Enter\')checkCloze()">'
+    +'<div id="clozeResult" class="shadow-result"></div>'
+    +'<div class="fc-controls"><button class="btn-secondary" onclick="prevCard(event)">←</button>'
+    +'<button class="btn-secondary" onclick="checkCloze()">✓ 检查</button>'
+    +'<button class="btn-secondary" onclick="speakCard(event)">🔊 提示读音</button>'
+    +'<button class="btn-secondary" onclick="nextCard(event)">→</button></div>';
+}
+function renderCloze(){
+  const c=cards[ci]; if(!c) return;
+  document.getElementById("clozeDef").innerHTML=escapeHtml(c.def)+(c.scene?'<div class="fc-scene">场景：'+escapeHtml(c.scene)+'</div>':'');
+  const inp=document.getElementById("clozeInput"); if(inp){ inp.value=""; inp.focus(); }
+  const r=document.getElementById("clozeResult"); if(r) r.textContent="";
+  document.getElementById("cardCount").textContent=(ci+1)+" / "+cards.length;
+}
+function checkCloze(){
+  const c=cards[ci]; if(!c) return;
+  const val=(document.getElementById("clozeInput").value||"").trim();
+  const r=document.getElementById("clozeResult");
+  r.innerHTML=looseMatch(val,c.term)?'<span style="color:#2e7d32">✅ 正确：'+escapeHtml(c.term)+'</span>'
+    :'<span style="color:#c0392b">答案：'+escapeHtml(c.term)+'</span>';
+}
+function looseMatch(a,b){ const n=s=>(s||"").toLowerCase().replace(/[\s\.,!?;:"'’“”()\-—]/g,""); return n(a)===n(b) && n(a)!==""; }
+function flipCard(){ const el=document.getElementById("fcInner"); if(!el) return; flipped=!flipped; el.classList.toggle("flipped",flipped); }
+function drawCard(){ if(clozeMode) renderCloze(); else renderCard(); }
+function prevCard(e){ if(e) e.stopPropagation(); ci=(ci-1+cards.length)%cards.length; flipped=false; drawCard(); }
+function nextCard(e){ if(e) e.stopPropagation(); ci=(ci+1)%cards.length; flipped=false; drawCard(); }
+function shuffleCards(){ for(let i=cards.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [cards[i],cards[j]]=[cards[j],cards[i]]; } ci=0; flipped=false; drawCard(); }
 
 /* ---------- 词汇表 ---------- */
 function buildVocab(){
@@ -610,8 +730,9 @@ function extractArticle(){
 function openQuiz(){
   const p=document.getElementById("panel-quiz");
   if(!lastMarkdown){ p.innerHTML='<p class="empty">先生成笔记。</p>'; return; }
-  p.innerHTML='<div class="panel-head"><h2>✍️ 阅读练习题</h2>'
-    +(quizBuilt?'<button class="btn-secondary" onclick="regenQuiz()">🔄 换一组</button>':'')+'</div>'
+  p.innerHTML='<div class="panel-head"><h2>✍️ 阅读练习题</h2><div>'
+    +'<button class="btn-secondary" onclick="speakArticle()">🔊 朗读全文</button> '
+    +(quizBuilt?'<button class="btn-secondary" onclick="regenQuiz()">🔄 换一组</button>':'')+'</div></div>'
     +'<div class="quiz-layout"><div class="quiz-article" id="quizArticle"></div>'
     +'<div class="quiz-questions" id="quizQuestions"></div></div>';
   const qa=document.getElementById("quizArticle");
@@ -633,7 +754,7 @@ async function genQuiz(){
     const data=await resp.json();
     const t=document.getElementById("quizQuestions"); if(!t) return;
     if(data.error){ t.innerHTML='<p class="empty">出题失败：'+escapeHtml(data.error)+' <button class="btn-secondary" onclick="genQuiz()">重试</button></p>'; return; }
-    quizData=data.questions||[]; quizBuilt=true; openQuiz();
+    quizData=data.questions||[]; quizBuilt=true; persistSession(); openQuiz();
   }catch(e){ const t=document.getElementById("quizQuestions"); if(t) t.innerHTML='<p class="empty">网络错误：'+escapeHtml(e.message)+' <button class="btn-secondary" onclick="genQuiz()">重试</button></p>'; }
 }
 function renderQuizQuestions(container){
@@ -658,39 +779,94 @@ function answerQuiz(qi,oi){
   exp.innerHTML="<strong>"+head+"</strong><br>"+escapeHtml(q.explanation||"");
 }
 
-/* ---------- 深度思考（全英文，按需生成，流式） ---------- */
+/* ---------- 深度思考（全英文，按需生成 + 聊天式讨论） ---------- */
+let diveAcc="";
+let diveChat=[];   // {role:'user'|'assistant', content}
+function diveHeadHtml(withTools){
+  let tools = withTools
+    ? '<div><button class="btn-secondary" onclick="copyDive()">📋 复制原文</button> '
+      +'<button class="btn-secondary" onclick="exportDivePDF(\'orig\')">🖨️ 原文 PDF</button> '
+      +'<button class="btn-secondary" onclick="genDive()">🔄 重新生成</button></div>'
+    : '';
+  return '<div class="panel-head"><h2>🌍 深度思考 <span class="muted-count">English</span></h2>'+tools+'</div>';
+}
 function openDive(){
   const p=document.getElementById("panel-dive");
   if(!lastMarkdown){ p.innerHTML='<p class="empty">先生成笔记。</p>'; return; }
   if(diveBuilt && diveMarkdown){
-    p.innerHTML='<div class="panel-head"><h2>🌍 深度思考 <span class="muted-count">English</span></h2>'
-      +'<div><button class="btn-secondary" onclick="copyDive()">📋 复制</button> '
-      +'<button class="btn-secondary" onclick="genDive()">🔄 重新生成</button></div></div>'
-      +'<div id="diveBody" class="dive-body">'+renderMd(diveMarkdown)+'</div>';
+    p.innerHTML=diveHeadHtml(true)
+      +'<div id="diveBody" class="dive-body">'+renderMd(diveMarkdown)+'</div>'
+      +renderDiscuss();
+    renderDiscussThread();
     return;
   }
-  p.innerHTML='<div class="panel-head"><h2>🌍 深度思考 <span class="muted-count">English</span></h2></div>'
+  p.innerHTML=diveHeadHtml(false)
     +'<p style="color:var(--muted);margin-bottom:1rem">对文章主题做一段深入、批判性的英文思考，结合时事、拓宽视野。点按钮才生成（会调用一次 AI）。</p>'
     +'<button class="btn" onclick="genDive()">▶️ 生成深度思考（English）</button>';
 }
 function genDive(){
-  if(busy) return;
+  if(busy){ stopGenerating(); if(diveAcc){ diveMarkdown=diveAcc; diveBuilt=true; } openDive(); toast("已停止"); return; }
   if(!cfg.key){ openSettings(); return; }
   if(!lastMarkdown) return;
+  diveChat=[];
   const p=document.getElementById("panel-dive");
-  p.innerHTML='<div class="panel-head"><h2>🌍 深度思考 <span class="muted-count">English</span></h2></div><div id="diveBody" class="dive-body cursor"></div>';
+  p.innerHTML='<div class="panel-head"><h2>🌍 深度思考 <span class="muted-count">English</span></h2><button class="btn-secondary" onclick="genDive()">⏹ 停止</button></div><div id="diveBody" class="dive-body cursor"></div>';
   const body=document.getElementById("diveBody");
-  let acc="", pending=false;
-  const flush=()=>{ pending=false; body.innerHTML=renderMd(acc); };
+  diveAcc=""; let pending=false;
+  const flush=()=>{ pending=false; body.innerHTML=renderMd(diveAcc); };
   busy=true;
   streamRequest("/deepdive",
     {api_key:cfg.key,base_url:cfg.base,model:cfg.model,article:lastMarkdown},
-    (delta)=>{ acc+=delta; if(!pending){ pending=true; requestAnimationFrame(flush); } },
-    ()=>{ diveMarkdown=acc; diveBuilt=true; busy=false; openDive(); },
+    (delta)=>{ diveAcc+=delta; if(!pending){ pending=true; requestAnimationFrame(flush); } },
+    ()=>{ diveMarkdown=diveAcc; diveBuilt=true; busy=false; persistSession(); openDive(); },
     (err)=>{ body.classList.remove("cursor"); body.innerHTML='<p class="empty">失败：'+escapeHtml(err)+' <button class="btn-secondary" onclick="genDive()">重试</button></p>'; busy=false; }
   );
 }
 function copyDive(){ if(diveMarkdown) navigator.clipboard.writeText(diveMarkdown).then(()=>toast("已复制")); }
+
+/* 讨论区（聊天式，练写作；AI 先润色你的英文再讨论） */
+function renderDiscuss(){
+  return '<div class="discuss"><div class="discuss-head">💬 讨论（用英文写，AI 会帮你润色再讨论）'
+    +'<button class="btn-secondary" onclick="exportDivePDF(\'talk\')" style="float:right">🖨️ 讨论版 PDF</button></div>'
+    +'<div class="discuss-thread" id="discussThread"></div>'
+    +'<div class="discuss-input"><textarea id="discussInput" placeholder="Write your comment in English, then Send..." rows="2"></textarea>'
+    +'<button class="btn" onclick="sendDiscuss()">Send</button></div></div>';
+}
+function renderDiscussThread(){
+  const t=document.getElementById("discussThread"); if(!t) return;
+  t.innerHTML=diveChat.map(m=>'<div class="dmsg '+m.role+'">'+(m.role==="user"?"🧑 ":"🤖 ")+(m.role==="user"?escapeHtml(m.content):renderMd(m.content))+'</div>').join("");
+  t.scrollTop=t.scrollHeight;
+}
+async function sendDiscuss(){
+  if(busy) return;
+  const ta=document.getElementById("discussInput"); const msg=(ta.value||"").trim();
+  if(!msg) return;
+  if(!cfg.key){ alert("请先填写 API Key"); openSettings(); return; }
+  diveChat.push({role:"user",content:msg}); ta.value=""; renderDiscussThread();
+  const t=document.getElementById("discussThread");
+  const div=document.createElement("div"); div.className="dmsg assistant cursor"; div.innerHTML="🤖 "; t.appendChild(div); t.scrollTop=t.scrollHeight;
+  let acc="", pending=false;
+  const flush=()=>{ pending=false; div.innerHTML="🤖 "+renderMd(acc); t.scrollTop=t.scrollHeight; };
+  busy=true;
+  await streamRequest("/discuss",
+    {api_key:cfg.key,base_url:cfg.base,model:cfg.model,message:msg,analysis:diveMarkdown,article:lastMarkdown,
+     history:diveChat.slice(-8).map(h=>({role:h.role,content:h.content}))},
+    (delta)=>{ acc+=delta; if(!pending){ pending=true; requestAnimationFrame(flush); } },
+    ()=>{ div.classList.remove("cursor"); div.innerHTML="🤖 "+renderMd(acc); diveChat.push({role:"assistant",content:acc}); persistSession(); busy=false; },
+    (err)=>{ div.classList.remove("cursor"); div.innerHTML="🤖 ❌ "+escapeHtml(err); busy=false; }
+  );
+}
+function exportDivePDF(kind){
+  if(!diveMarkdown){ alert("还没有内容"); return; }
+  let inner='<div class="dive">'+renderMd(diveMarkdown)+'</div>';
+  let title="深度思考";
+  if(kind==="talk" && diveChat.length){
+    title="深度思考 · 讨论版";
+    inner+='<h2 style="margin-top:2rem">Discussion</h2>';
+    diveChat.forEach(m=>{ inner+='<div class="'+(m.role==="user"?"dq":"da")+'"><b>'+(m.role==="user"?"🧑 You：":"🤖 Coach：")+'</b>'+(m.role==="user"?escapeHtml(m.content):renderMd(m.content))+'</div>'; });
+  }
+  openPrintWindow(title, divePrintCSS(), inner);
+}
 
 /* ---------- 清空 ---------- */
 function resetChat(){
@@ -705,7 +881,7 @@ function clearChat(){
 function clearAll(){
   if(!confirm("清空当前文章、笔记、闪卡、词汇、练习题和对话，重新开始？（API 设置会保留）")) return;
   document.getElementById("articleInput").value="";
-  lastMarkdown=""; cards=[]; ci=0; flipped=false; quizData=null; quizBuilt=false; diveBuilt=false; diveMarkdown="";
+  lastMarkdown=""; cards=[]; ci=0; flipped=false; quizData=null; quizBuilt=false; diveBuilt=false; diveMarkdown=""; diveChat=[]; diveAcc=""; familiarity={}; onlyWeak=false;
   resetChat();
   ["notes","cards","vocab","quiz","dive"].forEach(n=>{ document.getElementById("panel-"+n).innerHTML=""; });
   document.getElementById("workspace").style.display="none";
@@ -724,7 +900,7 @@ function exportChatMD(){
   if(chatHistory.length===0){ alert("还没有对话记录"); return; }
   let out="# AI 导师对话记录\n\n";
   chatHistory.forEach(m=>{ if(m.role==="user"){ if(m.context) out+="> 上下文："+m.context+"\n\n"; out+="**🧑 你**：\n"+m.content+"\n\n"; } else out+="**🤖 AI**：\n"+m.content+"\n\n"; });
-  downloadText(out,"外刊对话-"+today()+".md","text/markdown");
+  navigator.clipboard.writeText(out).then(()=>toast("对话 Markdown 已复制"));
 }
 function exportChatPDF(){
   if(chatHistory.length===0){ alert("还没有对话记录"); return; }
@@ -787,6 +963,14 @@ function vocabPrintCSS(){
     +'table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:.5rem .7rem;text-align:left;font-size:.92rem}'
     +'th{background:#f6f2ec}td:first-child{font-weight:700;color:#c0392b}@page{margin:1.6cm}';
 }
+function divePrintCSS(){
+  return 'body{font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;color:#222;line-height:1.75;max-width:760px;margin:0 auto;padding:2rem}'
+    +'.doc-title{text-align:center;font-size:1.5rem;margin-bottom:1.5rem}'
+    +'h2{font-size:1.2rem;margin-top:1.6rem;border-bottom:1px solid #eee;padding-bottom:.2rem}h3{margin-top:1.1rem}'
+    +'p{margin:.6rem 0}ul,ol{padding-left:1.3rem}'
+    +'.dq{margin-top:1rem}.da{background:#f6f2ec;border-radius:8px;padding:.7rem .9rem;margin:.3rem 0}'
+    +'@page{margin:1.6cm}';
+}
 function toCSV(rows){ return rows.map(r=>r.map(c=>'"'+String(c==null?"":c).replace(/"/g,'""')+'"').join(",")).join("\r\n"); }
 function downloadText(text, filename, mime){
   const blob=new Blob([text],{type:mime}), url=URL.createObjectURL(blob);
@@ -817,6 +1001,43 @@ async function sendChat(){
     ()=>{ aiDiv.classList.remove("cursor"); aiDiv.innerHTML=renderMd(acc); chatHistory.push({role:"assistant",content:acc}); persistSession(); busy=false; },
     (err)=>{ aiDiv.classList.remove("cursor"); aiDiv.innerHTML="❌ "+escapeHtml(err); busy=false; }
   );
+}
+
+/* ---------- 听说/语感：TTS 朗读 + 语音识别跟读（全客户端，不花 API） ---------- */
+function ttsLang(text){
+  const map={英语:"en-US",日语:"ja-JP",德语:"de-DE",韩语:"ko-KR",法语:"fr-FR",西班牙语:"es-ES",俄语:"ru-RU",意大利语:"it-IT"};
+  if(cfg.lang && cfg.lang!=="auto" && map[cfg.lang]) return map[cfg.lang];
+  if(/[぀-ゟ゠-ヿ]/.test(text)) return "ja-JP";
+  if(/[가-힣]/.test(text)) return "ko-KR";
+  if(/[а-яА-Я]/.test(text)) return "ru-RU";
+  if(/[一-鿿]/.test(text) && !/[A-Za-z]/.test(text)) return "zh-CN";
+  return "en-US";
+}
+let ttsOn=false;
+function speak(text){
+  if(!("speechSynthesis" in window)){ toast("此浏览器不支持朗读"); return; }
+  try{
+    if(speechSynthesis.speaking){ speechSynthesis.cancel(); }
+    const u=new SpeechSynthesisUtterance(text); u.lang=ttsLang(text); u.rate=0.95;
+    speechSynthesis.speak(u);
+  }catch(e){ toast("朗读失败"); }
+}
+function speakArticle(){
+  const t=extractArticle().replace(/[*_`#>|]/g,"").replace(/\n{2,}/g,". ");
+  if(!t){ toast("没有文章"); return; }
+  if(speechSynthesis.speaking){ speechSynthesis.cancel(); toast("已停止朗读"); return; }
+  speak(t);
+}
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+function shadowSupported(){ return !!SR; }
+function shadowListen(target, onResult){
+  if(!SR){ toast("此浏览器不支持语音识别（建议用 Chrome）"); return; }
+  try{
+    const r=new SR(); r.lang=ttsLang(target); r.interimResults=false; r.maxAlternatives=1;
+    r.onresult=(e)=>{ onResult(((e.results[0][0].transcript)||"").trim()); };
+    r.onerror=()=>{ toast("没听清，再试一次"); };
+    r.start();
+  }catch(e){ toast("无法启动语音识别"); }
 }
 
 /* ---------- 杂项 ---------- */
