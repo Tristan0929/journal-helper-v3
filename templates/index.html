@@ -168,6 +168,12 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
 .dmsg.assistant p{margin:.35rem 0}
 .discuss-input{display:flex;gap:.5rem;align-items:flex-end}
 .discuss-input textarea{flex:1;border:1px solid var(--border);border-radius:9px;padding:.6rem;font-family:inherit;font-size:.92rem;resize:vertical;min-height:2.6rem}
+.dmsg-tools{margin-top:.4rem}
+.btn-secondary.tiny{padding:.15rem .5rem;font-size:.75rem}
+.dtrans,.dive-trans{background:#f3f6f9;border:1px solid #e0e6ec;border-radius:8px;padding:.6rem .85rem;margin-top:.5rem;font-size:.9rem;line-height:1.7}
+.dive-trans{margin-top:1rem}
+.trans-tag{font-size:.72rem;color:var(--muted);margin-bottom:.3rem}
+.dtrans p,.dive-trans p{margin:.35rem 0}
 
 /* sidebar */
 .sidebar{position:fixed;top:0;right:calc(-1 * var(--sidebar-width) - 10px);width:var(--sidebar-width);
@@ -439,7 +445,7 @@ function refreshKeyHint(){
 function persistSession(){
   try{ localStorage.setItem("jh_session",JSON.stringify({
     article:document.getElementById("articleInput").value, markdown:lastMarkdown, chat:chatHistory,
-    dive:{md:diveMarkdown,built:diveBuilt,chat:diveChat},
+    dive:{md:diveMarkdown,built:diveBuilt,chat:diveChat,trans:diveTrans},
     fam:familiarity,
     quiz:{built:quizBuilt,data:quizData}
   })); }catch(e){}
@@ -452,7 +458,7 @@ function restoreSession(){
     if(s.markdown){ lastMarkdown=s.markdown; renderNotes(lastMarkdown); showWorkspace(); }
     if(Array.isArray(s.chat)){ chatHistory=s.chat;
       chatHistory.forEach(m=>{ if(m.role==="user") addMessage("user",m.content); else addMessage("ai",renderMd(m.content),true); }); }
-    if(s.dive){ diveMarkdown=s.dive.md||""; diveBuilt=!!s.dive.built; diveChat=Array.isArray(s.dive.chat)?s.dive.chat:[]; }
+    if(s.dive){ diveMarkdown=s.dive.md||""; diveBuilt=!!s.dive.built; diveChat=Array.isArray(s.dive.chat)?s.dive.chat:[]; diveTrans=s.dive.trans||""; }
     if(s.fam && typeof s.fam==="object") familiarity=s.fam;
     if(s.quiz){ quizBuilt=!!s.quiz.built; quizData=s.quiz.data||null; }
   }catch(e){}
@@ -584,7 +590,7 @@ async function analyze(){
   const article=document.getElementById("articleInput").value.trim();
   if(!article){ alert("请先粘贴文章"); return; }
 
-  busy=true; quizBuilt=false; quizData=null; diveBuilt=false; diveMarkdown=""; diveChat=[]; diveAcc="";
+  busy=true; quizBuilt=false; quizData=null; diveBuilt=false; diveMarkdown=""; diveChat=[]; diveAcc=""; diveTrans="";
   resetChat();   // 新文章 = 独立会话，清掉上一篇的对话
   const btn=document.getElementById("analyzeBtn"); btn.textContent="⏹ 停止重生成";
   showWorkspace(); setActiveTab("notes");
@@ -774,9 +780,11 @@ function answerQuiz(qi,oi){
 /* ---------- 深度思考（全英文，按需生成 + 聊天式讨论） ---------- */
 let diveAcc="";
 let diveChat=[];   // {role:'user'|'assistant', content}
+let diveTrans="";   // 深度思考正文的中文翻译（缓存）
 function diveHeadHtml(withTools){
   let tools = withTools
-    ? '<div><button class="btn-secondary" onclick="copyDive()">📋 复制原文</button> '
+    ? '<div><button class="btn-secondary" onclick="translateDive()">🌐 译</button> '
+      +'<button class="btn-secondary" onclick="copyDive()">📋 复制原文</button> '
       +'<button class="btn-secondary" onclick="exportDivePDF(\'orig\')">🖨️ 原文 PDF</button> '
       +'<button class="btn-secondary" onclick="genDive()">🔄 重新生成</button></div>'
     : '';
@@ -788,6 +796,7 @@ function openDive(){
   if(diveBuilt && diveMarkdown){
     p.innerHTML=diveHeadHtml(true)
       +'<div id="diveBody" class="dive-body">'+renderMd(diveMarkdown)+'</div>'
+      +'<div id="diveTrans" class="dive-trans"'+(diveTrans?'':' style="display:none"')+'>'+(diveTrans?'<div class="trans-tag">中文译文</div>'+renderMd(diveTrans):'')+'</div>'
       +renderDiscuss();
     renderDiscussThread();
     return;
@@ -808,13 +817,42 @@ function genDive(){
   const flush=()=>{ pending=false; body.innerHTML=renderMd(diveAcc); };
   busy=true;
   streamRequest("/deepdive",
-    {api_key:cfg.key,base_url:cfg.base,model:cfg.model,article:lastMarkdown},
+    {api_key:cfg.key,base_url:cfg.base,model:cfg.model,article:extractArticle()||lastMarkdown},
     (delta)=>{ diveAcc+=delta; if(!pending){ pending=true; requestAnimationFrame(flush); } },
     ()=>{ diveMarkdown=diveAcc; diveBuilt=true; busy=false; persistSession(); openDive(); },
     (err)=>{ body.classList.remove("cursor"); body.innerHTML='<p class="empty">失败：'+escapeHtml(err)+' <button class="btn-secondary" onclick="genDive()">重试</button></p>'; busy=false; }
   );
 }
 function copyDive(){ if(diveMarkdown) navigator.clipboard.writeText(diveMarkdown).then(()=>toast("已复制")); }
+
+/* 翻译（点了才翻，消耗一次 API；结果缓存，再点切换显示/隐藏） */
+function translateInto(text, container, onText){
+  if(busy){ toast("请等当前生成完成"); return; }
+  if(!cfg.key){ openSettings(); return; }
+  if(!text){ return; }
+  container.style.display="block";
+  container.innerHTML='<span class="loading-line">翻译中…</span>';
+  let acc="", pending=false;
+  const flush=()=>{ pending=false; container.innerHTML='<div class="trans-tag">中文译文</div>'+renderMd(acc); };
+  busy=true;
+  streamRequest("/translate",
+    {api_key:cfg.key,base_url:cfg.base,model:cfg.model,text:text},
+    (d)=>{ acc+=d; if(!pending){ pending=true; requestAnimationFrame(flush); } },
+    ()=>{ container.innerHTML='<div class="trans-tag">中文译文</div>'+renderMd(acc); busy=false; if(onText) onText(acc); },
+    (e)=>{ container.innerHTML='<span style="color:#c0392b">翻译失败：'+escapeHtml(e)+'</span>'; busy=false; }
+  );
+}
+function translateDive(){
+  const c=document.getElementById("diveTrans"); if(!c) return;
+  if(diveTrans){ c.style.display=(c.style.display==="none"?"block":"none"); return; }
+  translateInto(diveMarkdown, c, (txt)=>{ diveTrans=txt; persistSession(); });
+}
+function translateMsg(i){
+  const m=diveChat[i]; if(!m) return;
+  const c=document.getElementById("dtrans-"+i); if(!c) return;
+  if(m.trans){ c.style.display=(c.style.display==="none"?"block":"none"); return; }
+  translateInto(m.content, c, (txt)=>{ m.trans=txt; persistSession(); });
+}
 
 /* 讨论区（聊天式，练写作；AI 先润色你的英文再讨论） */
 function renderDiscuss(){
@@ -826,7 +864,12 @@ function renderDiscuss(){
 }
 function renderDiscussThread(){
   const t=document.getElementById("discussThread"); if(!t) return;
-  t.innerHTML=diveChat.map(m=>'<div class="dmsg '+m.role+'">'+(m.role==="user"?"🧑 ":"🤖 ")+(m.role==="user"?escapeHtml(m.content):renderMd(m.content))+'</div>').join("");
+  t.innerHTML=diveChat.map((m,i)=>{
+    if(m.role==="user") return '<div class="dmsg user">🧑 '+escapeHtml(m.content)+'</div>';
+    return '<div class="dmsg assistant">🤖 '+renderMd(m.content)
+      +'<div class="dmsg-tools"><button class="btn-secondary tiny" onclick="translateMsg('+i+')">🌐 译</button></div>'
+      +'<div class="dtrans" id="dtrans-'+i+'"'+(m.trans?'':' style="display:none"')+'>'+(m.trans?'<div class="trans-tag">中文译文</div>'+renderMd(m.trans):'')+'</div></div>';
+  }).join("");
   t.scrollTop=t.scrollHeight;
 }
 async function sendDiscuss(){
@@ -841,10 +884,10 @@ async function sendDiscuss(){
   const flush=()=>{ pending=false; div.innerHTML="🤖 "+renderMd(acc); t.scrollTop=t.scrollHeight; };
   busy=true;
   await streamRequest("/discuss",
-    {api_key:cfg.key,base_url:cfg.base,model:cfg.model,message:msg,analysis:diveMarkdown,article:lastMarkdown,
+    {api_key:cfg.key,base_url:cfg.base,model:cfg.model,message:msg,analysis:diveMarkdown,article:extractArticle()||lastMarkdown,
      history:diveChat.slice(-8).map(h=>({role:h.role,content:h.content}))},
     (delta)=>{ acc+=delta; if(!pending){ pending=true; requestAnimationFrame(flush); } },
-    ()=>{ div.classList.remove("cursor"); div.innerHTML="🤖 "+renderMd(acc); diveChat.push({role:"assistant",content:acc}); persistSession(); busy=false; },
+    ()=>{ diveChat.push({role:"assistant",content:acc}); persistSession(); busy=false; renderDiscussThread(); },
     (err)=>{ div.classList.remove("cursor"); div.innerHTML="🤖 ❌ "+escapeHtml(err); busy=false; }
   );
 }
@@ -873,7 +916,7 @@ function clearChat(){
 function clearAll(){
   if(!confirm("清空当前文章、笔记、闪卡、词汇、练习题和对话，重新开始？（API 设置会保留）")) return;
   document.getElementById("articleInput").value="";
-  lastMarkdown=""; cards=[]; ci=0; flipped=false; quizData=null; quizBuilt=false; diveBuilt=false; diveMarkdown=""; diveChat=[]; diveAcc=""; familiarity={}; onlyWeak=false;
+  lastMarkdown=""; cards=[]; ci=0; flipped=false; quizData=null; quizBuilt=false; diveBuilt=false; diveMarkdown=""; diveChat=[]; diveAcc=""; diveTrans=""; familiarity={}; onlyWeak=false;
   resetChat();
   ["notes","cards","vocab","quiz","dive"].forEach(n=>{ document.getElementById("panel-"+n).innerHTML=""; });
   document.getElementById("workspace").style.display="none";
