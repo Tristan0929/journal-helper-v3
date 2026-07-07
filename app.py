@@ -111,6 +111,14 @@ Write an original, thought-provoking analysis IN ENGLISH (always English, regard
 
 Use clear Markdown with short section headings. Be substantive and specific, not generic. Aim for depth over length."""
 
+DISCUSS_SYSTEM_PROMPT = """You are the user's English discussion partner and writing coach. The user is a learner practicing English by discussing the topic below with you. Always reply IN ENGLISH.
+
+For each of the user's messages, do TWO things, in this order:
+1. **Polish** — If the user's English is awkward, unclear or grammatically off, briefly show a smoother, more natural version. Start this with "✍️ Polished: ...". Keep it short; do not nitpick if the message is already fine (in that case skip this part or just say "Your English reads well.").
+2. **Discuss** — Then engage genuinely with their idea: agree/push back with reasons, add a fresh angle or example, and end with one question that moves the thinking forward.
+
+Be encouraging but intellectually honest. Keep it conversational and reasonably concise."""
+
 
 def make_client(api_key, base_url):
     if not base_url:
@@ -187,8 +195,9 @@ def chat():
 
     messages = [{"role": "system", "content": CHAT_SYSTEM_PROMPT}]
     if article:
+        # 只带精简背景，省 token（无状态每次都要重发）
         messages.append({"role": "system",
-                         "content": "以下是用户当前正在学习的文章/笔记，作为背景参考（仅在相关且有独特用法时引用）：\n\n" + article[:6000]})
+                         "content": "以下是用户当前正在学习的文章/笔记片段，作为背景参考（仅在相关且有独特用法时引用）：\n\n" + article[:2500]})
     for h in history[-10:]:
         role, content = h.get("role"), h.get("content")
         if role in ("user", "assistant") and content:
@@ -258,6 +267,41 @@ def deepdive():
         {"role": "user", "content": article[:9000]},
     ]
     return Response(sse_stream(client, model, messages, 0.8, 4096),
+                    mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.route("/discuss", methods=["POST"])
+def discuss():
+    data = request.get_json(force=True)
+    api_key = (data.get("api_key") or "").strip()
+    base_url = (data.get("base_url") or "").strip()
+    model = (data.get("model") or "deepseek-v4-flash").strip()
+    message = (data.get("message") or "").strip()
+    analysis = (data.get("analysis") or "").strip()   # 深度思考正文
+    article = (data.get("article") or "").strip()
+    history = data.get("history") or []
+    if not api_key:
+        return jsonify({"error": "请先在设置里填写你自己的 API Key"}), 400
+    if not message:
+        return jsonify({"error": "消息不能为空"}), 400
+
+    messages = [{"role": "system", "content": DISCUSS_SYSTEM_PROMPT}]
+    ctx = ""
+    if analysis:
+        ctx += "The analysis under discussion:\n" + analysis[:3500] + "\n\n"
+    if article:
+        ctx += "Source article excerpt:\n" + article[:2000]
+    if ctx:
+        messages.append({"role": "system", "content": ctx})
+    for h in history[-8:]:
+        role, content = h.get("role"), h.get("content")
+        if role in ("user", "assistant") and content:
+            messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": message})
+
+    client = make_client(api_key, base_url)
+    return Response(sse_stream(client, model, messages, 0.7, 1500),
                     mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
