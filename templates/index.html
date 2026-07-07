@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!--
+  外刊阅读助手 (Journal Reading Helper)
+  Copyright (c) 2026 Tj  https://github.com/Tristan0929
+  Licensed under the MIT License.
+-->
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
@@ -158,6 +163,16 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
 .quiz-article p{margin:.7rem 0}
 .quiz-questions{flex:1;min-width:0}
 @media(max-width:720px){.quiz-layout{flex-direction:column}.quiz-article{flex:none;width:100%;position:static;max-height:38vh}}
+/* 上下模式 */
+.quiz-rows{display:flex;flex-direction:column;gap:1.2rem}
+.quiz-article.rows{flex:none;width:100%;position:static;max-height:none;border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;background:#fcfbfa}
+/* 模式切换按钮 */
+.qmode{display:inline-flex;border:1px solid var(--border);border-radius:9px;overflow:hidden}
+.qmode button{background:#fff;border:none;padding:.4rem .8rem;font-size:.83rem;cursor:pointer;color:var(--muted)}
+.qmode button.on{background:var(--accent);color:#fff}
+.qhint{font-size:.82rem;color:var(--muted);background:#faf7f3;border-radius:8px;padding:.5rem .8rem;margin-bottom:.9rem}
+mark.hl{background:#fff3a0;cursor:pointer;border-radius:2px;padding:0 1px}
+mark.hl:hover{background:#ffe866}
 /* 深度思考 */
 .dive-body{line-height:1.8}
 .dive-body h2{font-size:1.2rem;margin-top:1.8rem;margin-bottom:.6rem}
@@ -206,9 +221,10 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
 .sidebar-input-area{display:flex;border-top:1px solid var(--border);padding:.8rem;gap:.5rem}
 .sidebar-input-area input{flex:1;border:1px solid var(--border);border-radius:9px;padding:.6rem;font-size:.9rem}
 .sidebar-input-area button{padding:.5rem 1.1rem}
-#askBtn{position:absolute;display:none;z-index:1500;background:var(--accent);color:#fff;border:none;
-  padding:.4rem .8rem;border-radius:9px;font-size:.82rem;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.25)}
-#askBtn:hover{background:var(--accent-hover)}
+.sel-bar{position:absolute;display:none;z-index:1500;gap:.3rem;box-shadow:0 3px 12px rgba(0,0,0,.25);border-radius:9px;overflow:hidden}
+.sel-bar button{background:var(--accent);color:#fff;border:none;padding:.4rem .7rem;font-size:.82rem;cursor:pointer}
+.sel-bar button:hover{background:var(--accent-hover)}
+.sel-bar button+button{border-left:1px solid rgba(255,255,255,.25)}
 .sidebar-toggle{position:fixed;bottom:2rem;right:2rem;width:56px;height:56px;border-radius:50%;
   background:var(--brand);color:#fff;border:none;font-size:1.5rem;cursor:pointer;z-index:1000;
   box-shadow:0 4px 14px rgba(0,0,0,.18);transition:right .3s ease}
@@ -255,6 +271,8 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
   .fc-controls,.rate-row{flex-wrap:wrap}
   .result-toolbar{justify-content:flex-start}
 }
+.site-footer{text-align:center;color:var(--muted);font-size:.8rem;padding:1.5rem 0 .5rem}
+.site-footer a{color:var(--brand);text-decoration:none}
 @media print{body *{visibility:hidden}}
 </style>
 </head>
@@ -267,14 +285,14 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
     </div>
     <div style="display:flex;gap:.5rem">
       <button class="icon-btn" onclick="openTutorial()">📖 使用教程</button>
-      <button class="icon-btn" onclick="openSettings()">⚙️ 设置 API <span class="saved-tag" id="savedTag">✓已保存</span></button>
+      <button class="icon-btn" onclick="openSettings()">⚙️ 设置 <span class="saved-tag" id="savedTag">✓已保存</span></button>
     </div>
   </div>
 
   <div class="card">
     <div class="input-group">
       <label>📄 外刊文章</label>
-      <textarea id="articleInput" placeholder="把英文文章直接粘贴进来（不用手动排版）..."></textarea>
+      <textarea id="articleInput" placeholder="把外刊文章直接粘贴进来（英/日/德/韩/西等任意语种，不用手动排版）..."></textarea>
     </div>
     <div class="card-actions">
       <span class="key-hint" id="keyHint"></span>
@@ -299,9 +317,14 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
     <div class="card panel" id="panel-quiz" style="display:none"></div>
     <div class="card panel" id="panel-dive" style="display:none"></div>
   </div>
+
+  <footer class="site-footer">© 2026 <b>Tj</b> · <a href="https://github.com/Tristan0929" target="_blank" rel="noopener">GitHub</a> · MIT License</footer>
 </div>
 
-<button id="askBtn" onclick="askSelection()">💬 问 AI</button>
+<div id="selBar" class="sel-bar">
+  <button onclick="askSelection()">💬 问 AI</button>
+  <button onclick="addWordFromSel()">＋ 添加单词</button>
+</div>
 <button class="sidebar-toggle" id="sidebarToggle">💬</button>
 
 <div class="sidebar" id="sidebar">
@@ -325,7 +348,7 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
 
 <div class="modal" id="modal">
   <div class="box">
-    <h2>设置 API</h2>
+    <h2>设置</h2>
     <p class="tip">密钥只保存在你自己的浏览器；调用时经本站服务器转发给服务商，服务器不存储、不记录密钥。</p>
     <div class="warn">提示：AI 可能记错史实且语气自信。本工具已内置「依据原文、不确定要标注」等约束，但仍是学习助手，硬史实请以教材/原文为准。</div>
     <div class="field"><label>服务商</label>
@@ -361,6 +384,12 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
         <option value="mono">等宽 Mono</option>
       </select>
       <div class="hint">影响阅读区与全站文字，改完点保存生效。</div></div>
+    <div class="field"><label>添加单词方式</label>
+      <select id="addMode">
+        <option value="auto">自动补释义（调用 AI）</option>
+        <option value="manual">手动填（自己写释义，不花 API）</option>
+      </select>
+      <div class="hint">在笔记/深度思考里选中词组，点「＋添加单词」时用哪种方式补进词汇表。</div></div>
     <div class="field"><label>API Key</label><input id="apiKey" type="password" placeholder="sk-..." autocomplete="off"><div class="hint" id="keyLink"></div></div>
     <div class="modal-row">
       <button class="btn btn-ghost" onclick="closeSettings()">取消</button>
@@ -375,7 +404,7 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
     <p class="tip">一个把外刊文章变成个人学习笔记、并练读写听说的小工具。所有数据只存在你自己的浏览器里。</p>
 
     <h3>① 准备</h3>
-    <p>点右上角 <b>⚙️ 设置 API</b>，填入你自己的 API Key（默认 DeepSeek，也可选 OpenAI / Kimi / 智谱 等）。原文语种默认<b>自动识别</b>，日/德/韩/西等外刊都行，识别不准可手动指定。密钥只存在你浏览器，服务器只转发不保存。</p>
+    <p>点右上角 <b>⚙️ 设置</b>，填入你自己的 API Key（默认 DeepSeek，也可选 OpenAI / Kimi / 智谱 等）。原文语种默认<b>自动识别</b>，日/德/韩/西等外刊都行，识别不准可手动指定。密钥只存在你浏览器，服务器只转发不保存。</p>
 
     <h3>② 生成笔记</h3>
     <p>把外刊文章直接粘进输入框——<b>分栏、断行、乱码都不用管</b>，AI 会自动理顺版面。点<b>🚀 开始分析</b>，笔记会像打字一样流式出现；中途发现跑偏，点<b>⏹ 停止重生成</b>可立刻中断、省 token。笔记含六块：文章 / 词汇精析 / 长难句语法 / 句子赏析 / 写作手法 / 背诵速查表。</p>
@@ -384,11 +413,11 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
     <h3>③ 上方标签切换功能</h3>
     <p><b>🎴 闪卡</b>：翻卡背词，翻面后用 <b>不认识 / 模糊 / 认识</b> 记熟练度（简易 Anki），可「只复习不熟的」，还有 <b>✍️ 拼写自测</b>，也能导出 Anki CSV。<br>
     <b>📇 词汇表</b>：单独看速查表，导出 PDF / CSV。<br>
-    <b>✍️ 练习题</b>：左边文章、右边题目；点「生成题目」才出 5 道阅读选择题，即时判分。<br>
-    <b>🌍 深度思考</b>：点「生成」出一段批判性分析（<b>用原文的语言</b>，英语文章就英语、日语就日语）；下方可用该语言写评论，AI <b>先润色你的表达再和你讨论</b>（练写作）。可 🔊 朗读、🌐 译成中文（点了才翻、可隐藏）；分析＋讨论一起导出 PDF 或复制 MD。</p>
+    <b>✍️ 练习题</b>：可选<b>两栏</b>（左文右题，选中文字可黄色划重点，不导 PDF）或<b>上下</b>（文章在上题目在下，可把文章＋题目一起导 PDF）；点「生成题目」才出 5 道阅读选择题，即时判分。<br>
+    <b>🌍 深度思考</b>：点「生成」出一段批判性分析，默认<b>用原文的语言</b>、也可下拉自选输出语言；下方可用该语言写评论，AI <b>先润色你的表达再和你讨论</b>（练写作）。可 🔊 朗读、🌐 译成中文（点了才翻、可隐藏）；分析＋讨论一起导出 PDF 或复制 MD。</p>
 
-    <h3>④ 选中提问</h3>
-    <p>在笔记里选中任意词句，旁边冒出 <b>💬 问 AI</b>，点它打开侧边栏、带着上下文提问。可以自由问任何问题。</p>
+    <h3>④ 选中：问 AI / 添加单词</h3>
+    <p>在<b>笔记或深度思考</b>里选中词句，旁边冒出 <b>💬 问 AI</b>（带上下文提问）和 <b>＋添加单词</b>（把该词加进词汇表/闪卡；在设置里可选自动补释义或手动填）。</p>
 
     <h3>⑤ 保存与清空</h3>
     <p>文章、笔记、问答、深度思考讨论、闪卡熟练度都会<b>自动存在本地浏览器</b>，刷新/关掉再打开都还在，直到你点 <b>🗑️ 清空重来</b> 开始下一篇。</p>
@@ -406,11 +435,29 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
   </div>
 </div>
 
+<div class="modal" id="addModal">
+  <div class="box" style="max-width:440px">
+    <h2>添加单词</h2>
+    <p class="tip">手动填写释义和场景，加入词汇表和闪卡。</p>
+    <div class="field"><label>表达</label><input id="awTerm"></div>
+    <div class="field"><label>释义</label><input id="awDef" placeholder="中文释义"></div>
+    <div class="field"><label>场景（可选）</label><input id="awScene" placeholder="如：正式书面 / 口语"></div>
+    <div class="modal-row">
+      <button class="btn btn-ghost" onclick="closeAddModal()">取消</button>
+      <button class="btn" onclick="saveAddWord()">保存</button>
+    </div>
+  </div>
+</div>
+
 <script>
 "use strict";
 const md = window.markdownit({html:false,breaks:true,linkify:true}).use(window.markdownitFootnote);
-/* 只把转义后的 <br> 安全还原成真换行，其它 HTML 仍保持转义 */
-function renderMd(t){ return md.render(t||"").replace(/&lt;br\s*\/?&gt;/gi,"<br>"); }
+/* 还原 <br> 换行；把 ==句子== 渲染成高亮句（对中日韩也生效，避开 Markdown 斜体的局限） */
+function renderMd(t){
+  return md.render(t||"")
+    .replace(/&lt;br\s*\/?&gt;/gi,"<br>")
+    .replace(/==([^=\n]{2,}?)==/g,'<em class="sent">$1</em>');
+}
 
 const PROVIDERS = {
   deepseek:{name:"DeepSeek（推荐）",base:"https://api.deepseek.com",model:"deepseek-v4-flash",
@@ -425,7 +472,7 @@ const PROVIDERS = {
   custom:{name:"自定义 (OpenAI 兼容)",base:"",model:"",modelHint:"填写该服务商的模型名。",keyLink:"填写该服务商提供的 Key。"}
 };
 
-let cfg = {provider:"deepseek",base:PROVIDERS.deepseek.base,model:PROVIDERS.deepseek.model,key:"",lang:"auto",fontScale:"1",fontFace:"system"};
+let cfg = {provider:"deepseek",base:PROVIDERS.deepseek.base,model:PROVIDERS.deepseek.model,key:"",lang:"auto",fontScale:"1",fontFace:"system",addMode:"auto"};
 const FONTS={system:'-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif',
   serif:'Georgia,"Times New Roman","Songti SC",STSong,serif',
   rounded:'"PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif',
@@ -445,8 +492,10 @@ let chatHistory = [];
 let busy = false;
 let cards = [], ci = 0, flipped = false;
 let quizData = null, quizBuilt = false;
+let quizMode = "cols", quizHL = [];   // 阅读题：cols两栏/rows上下；quizHL=两栏模式的高亮短语
 let pendingSel = "";
 let familiarity = {}, onlyWeak = false;   // 闪卡熟练度：term -> 0不认识/1模糊/2认识
+let userVocab = [];   // 用户自己添加的词 {term,def,scene}
 
 window.onload = () => {
   const sel = document.getElementById("provider");
@@ -470,6 +519,7 @@ function openSettings(){
   document.getElementById("lang").value=cfg.lang||"auto";
   document.getElementById("fontScale").value=cfg.fontScale||"1";
   document.getElementById("fontFace").value=cfg.fontFace||"system";
+  document.getElementById("addMode").value=cfg.addMode||"auto";
   applyProviderHints(cfg.provider);
   document.getElementById("modal").classList.add("open");
 }
@@ -494,6 +544,7 @@ function saveSettings(){
   cfg.lang=document.getElementById("lang").value||"auto";
   cfg.fontScale=document.getElementById("fontScale").value||"1";
   cfg.fontFace=document.getElementById("fontFace").value||"system";
+  cfg.addMode=document.getElementById("addMode").value||"auto";
   applyFont();
   persistConfig(); closeSettings(); refreshKeyHint();
   const tag=document.getElementById("savedTag"); tag.classList.add("show"); setTimeout(()=>tag.classList.remove("show"),2000);
@@ -501,16 +552,16 @@ function saveSettings(){
 function refreshKeyHint(){
   const hint=document.getElementById("keyHint");
   if(cfg.key){ hint.className="key-hint"; hint.textContent="当前："+(PROVIDERS[cfg.provider]?.name||cfg.provider)+" · "+cfg.model; }
-  else{ hint.className="key-hint warn"; hint.textContent="⚠️ 还没填 API Key，点右上角「设置 API」"; }
+  else{ hint.className="key-hint warn"; hint.textContent="⚠️ 还没填 API Key，点右上角「设置」"; }
 }
 
 /* ---------- 会话保存/恢复 ---------- */
 function persistSession(){
   try{ localStorage.setItem("jh_session",JSON.stringify({
     article:document.getElementById("articleInput").value, markdown:lastMarkdown, chat:chatHistory,
-    dive:{md:diveMarkdown,built:diveBuilt,chat:diveChat,trans:diveTrans},
-    fam:familiarity,
-    quiz:{built:quizBuilt,data:quizData}
+    dive:{md:diveMarkdown,built:diveBuilt,chat:diveChat,trans:diveTrans,lang:diveLang},
+    fam:familiarity, uvocab:userVocab,
+    quiz:{built:quizBuilt,data:quizData,mode:quizMode,hl:quizHL}
   })); }catch(e){}
 }
 function restoreSession(){
@@ -521,9 +572,10 @@ function restoreSession(){
     if(s.markdown){ lastMarkdown=s.markdown; renderNotes(lastMarkdown); showWorkspace(); }
     if(Array.isArray(s.chat)){ chatHistory=s.chat;
       chatHistory.forEach(m=>{ if(m.role==="user") addMessage("user",m.content); else addMessage("ai",renderMd(m.content),true); }); }
-    if(s.dive){ diveMarkdown=s.dive.md||""; diveBuilt=!!s.dive.built; diveChat=Array.isArray(s.dive.chat)?s.dive.chat:[]; diveTrans=s.dive.trans||""; }
+    if(s.dive){ diveMarkdown=s.dive.md||""; diveBuilt=!!s.dive.built; diveChat=Array.isArray(s.dive.chat)?s.dive.chat:[]; diveTrans=s.dive.trans||""; diveLang=s.dive.lang||""; }
     if(s.fam && typeof s.fam==="object") familiarity=s.fam;
-    if(s.quiz){ quizBuilt=!!s.quiz.built; quizData=s.quiz.data||null; }
+    if(Array.isArray(s.uvocab)) userVocab=s.uvocab;
+    if(s.quiz){ quizBuilt=!!s.quiz.built; quizData=s.quiz.data||null; quizMode=s.quiz.mode||"cols"; quizHL=Array.isArray(s.quiz.hl)?s.quiz.hl:[]; }
   }catch(e){}
 }
 
@@ -553,30 +605,30 @@ function askableContains(node){
 }
 function currentSelText(){ const s=window.getSelection(); return s?s.toString().trim():""; }
 function maybeShowAsk(){
-  const btn=document.getElementById("askBtn");
+  const bar=document.getElementById("selBar");
   const sel=window.getSelection(); const text=sel?sel.toString().trim():"";
   if(!text || !sel.rangeCount || !askableContains(sel.anchorNode)) return;
   pendingSel=text;
   const rect=sel.getRangeAt(0).getBoundingClientRect();
-  btn.style.top=(window.scrollY+rect.bottom+8)+"px";
-  btn.style.left=(window.scrollX+Math.max(rect.left,8))+"px";
-  btn.style.display="block";
+  bar.style.top=(window.scrollY+rect.bottom+8)+"px";
+  bar.style.left=(window.scrollX+Math.max(rect.left,8))+"px";
+  bar.style.display="flex";
 }
-document.addEventListener("mouseup",()=>setTimeout(maybeShowAsk,10));
-document.addEventListener("touchend",()=>setTimeout(maybeShowAsk,60));
-document.addEventListener("mousedown",(e)=>{ const btn=document.getElementById("askBtn"); if(e.target!==btn) btn.style.display="none"; });
-document.addEventListener("scroll",()=>{ document.getElementById("askBtn").style.display="none"; }, true);
+document.addEventListener("mouseup",()=>setTimeout(()=>{ maybeShowAsk(); maybeHighlightQuiz(); },10));
+document.addEventListener("touchend",()=>setTimeout(()=>{ maybeShowAsk(); maybeHighlightQuiz(); },60));
+document.addEventListener("mousedown",(e)=>{ const bar=document.getElementById("selBar"); if(!bar.contains(e.target)) bar.style.display="none"; });
+document.addEventListener("scroll",()=>{ document.getElementById("selBar").style.display="none"; }, true);
 function openSidebarWith(context){
   const sb=document.getElementById("sidebar"), c=document.getElementById("mainContainer");
   if(!sb.classList.contains("open")){
     sb.classList.add("open"); c.classList.add("sidebar-open");
     if(!document.getElementById("chatMessages").hasChildNodes())
-      addMessage("ai","👋 你好！可以直接问任何英语问题；在笔记或深度思考里选中词句点「问 AI」，我会结合上下文解答。");
+      addMessage("ai","👋 你好！可以直接问任何语言问题；在笔记或深度思考里选中词句点「问 AI」，我会结合上下文解答。");
   }
   if(context) updateContext(context);
   document.getElementById("chatInput").focus();
 }
-function askSelection(){ document.getElementById("askBtn").style.display="none"; if(pendingSel) openSidebarWith(pendingSel); }
+function askSelection(){ document.getElementById("selBar").style.display="none"; if(pendingSel) openSidebarWith(pendingSel); }
 
 /* ---------- SSE 流式（可中断） ---------- */
 let activeController=null;
@@ -656,7 +708,7 @@ async function analyze(){
   const article=document.getElementById("articleInput").value.trim();
   if(!article){ alert("请先粘贴文章"); return; }
 
-  busy=true; quizBuilt=false; quizData=null; diveBuilt=false; diveMarkdown=""; diveChat=[]; diveAcc=""; diveTrans="";
+  busy=true; quizBuilt=false; quizData=null; quizHL=[]; diveBuilt=false; diveMarkdown=""; diveChat=[]; diveAcc=""; diveTrans=""; userVocab=[];
   resetChat();   // 新文章 = 独立会话，清掉上一篇的对话
   const btn=document.getElementById("analyzeBtn"); btn.textContent="⏹ 停止重生成";
   showWorkspace(); setActiveTab("notes");
@@ -688,18 +740,61 @@ function extractVocab(){
     return {term:t[0]||"", def:t[1]||"", scene:t[2]||""};
   }).filter(r=>r.term);
 }
+/* 速查表 + 用户自定义词，合并去重 */
+function allVocab(){
+  const base=extractVocab(); const seen=new Set(base.map(r=>r.term.toLowerCase()));
+  const extra=userVocab.filter(r=>r.term && !seen.has(r.term.toLowerCase()));
+  return base.concat(extra);
+}
+/* 选中「＋添加单词」：按设置里自动/手动补进自定义词汇 */
+function refreshVocabViews(){
+  const a=document.querySelector(".tab.active"); const t=a?a.dataset.tab:"";
+  if(t==="vocab") buildVocab(); else if(t==="cards") buildCards();
+}
+function addWordFromSel(){
+  document.getElementById("selBar").style.display="none";
+  const term=(pendingSel||"").trim(); if(!term) return;
+  if(!lastMarkdown){ toast("先生成笔记再添加"); return; }
+  if(allVocab().some(r=>r.term.toLowerCase()===term.toLowerCase())){ toast("「"+term+"」已在词汇表"); return; }
+  if(cfg.addMode==="manual"){ openAddModal(term); return; }
+  if(!cfg.key){ openSettings(); return; }
+  userVocab.push({term, def:"（释义生成中…）", scene:""});
+  persistSession(); refreshVocabViews(); toast("已加入词汇表，正在补释义…");
+  fetch("/defineword",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({api_key:cfg.key,base_url:cfg.base,model:cfg.model,word:term,context:extractArticle().slice(0,1500)})})
+    .then(r=>r.json()).then(d=>{
+      const it=userVocab.find(r=>r.term===term); if(!it) return;
+      if(d.error){ it.def="（补释义失败，可在设置改手动填）"; }
+      else { it.def=d.def||""; it.scene=d.scene||""; }
+      persistSession(); refreshVocabViews();
+    }).catch(()=>{ const it=userVocab.find(r=>r.term===term); if(it){ it.def="（网络错误，可稍后重加）"; persistSession(); refreshVocabViews(); } });
+}
+function openAddModal(term){
+  document.getElementById("awTerm").value=term;
+  document.getElementById("awDef").value=""; document.getElementById("awScene").value="";
+  document.getElementById("addModal").classList.add("open");
+  setTimeout(()=>document.getElementById("awDef").focus(),50);
+}
+function closeAddModal(){ document.getElementById("addModal").classList.remove("open"); }
+function saveAddWord(){
+  const term=document.getElementById("awTerm").value.trim();
+  if(!term){ closeAddModal(); return; }
+  if(allVocab().some(r=>r.term.toLowerCase()===term.toLowerCase())){ toast("已在词汇表"); closeAddModal(); return; }
+  userVocab.push({term, def:document.getElementById("awDef").value.trim(), scene:document.getElementById("awScene").value.trim()});
+  persistSession(); refreshVocabViews(); closeAddModal(); toast("已添加「"+term+"」");
+}
 
 /* ---------- 闪卡（Anki 式熟练度 + 朗读/跟读/拼写自测） ---------- */
 let clozeMode=false;
 function statsHtml(){
-  const all=extractVocab(); let k=0,m=0,n=0,u=0;
+  const all=allVocab(); let k=0,m=0,n=0,u=0;
   all.forEach(c=>{ const l=familiarity[c.term]; if(l===2)k++; else if(l===1)m++; else if(l===0)n++; else u++; });
   return '认识 '+k+' · 模糊 '+m+' · 不认识 '+n+(u?' · 未评 '+u:'');
 }
 function updateStats(){ const el=document.getElementById("cardStats"); if(el) el.textContent=statsHtml(); }
 function toggleWeak(){ onlyWeak=!onlyWeak; buildCards(); }
 function buildCards(){
-  const all=extractVocab();
+  const all=allVocab();
   const p=document.getElementById("panel-cards");
   if(!all.length){ p.innerHTML='<p class="empty">还没有词汇，先生成笔记。</p>'; return; }
   cards = onlyWeak ? all.filter(c=>familiarity[c.term]!==2) : all;
@@ -772,7 +867,7 @@ function shuffleCards(){ for(let i=cards.length-1;i>0;i--){ const j=Math.floor(M
 
 /* ---------- 词汇表 ---------- */
 function buildVocab(){
-  const v=extractVocab(); const p=document.getElementById("panel-vocab");
+  const v=allVocab(); const p=document.getElementById("panel-vocab");
   if(!v.length){ p.innerHTML='<p class="empty">还没有词汇，先生成笔记。</p>'; return; }
   const rows=v.map(r=>'<tr><td>'+escapeHtml(r.term)+'</td><td>'+escapeHtml(r.def)+'</td><td>'+escapeHtml(r.scene)+'</td></tr>').join("");
   p.innerHTML='<div class="panel-head"><h2>📇 词汇表 <span class="muted-count">'+v.length+' 个</span></h2>'
@@ -791,21 +886,79 @@ function extractArticle(){
 }
 
 /* ---------- 练习题（左文右题，题目按需生成） ---------- */
+function setQuizMode(m){ if(quizMode===m) return; quizMode=m; persistSession(); openQuiz(); }
 function openQuiz(){
   const p=document.getElementById("panel-quiz");
   if(!lastMarkdown){ p.innerHTML='<p class="empty">先生成笔记。</p>'; return; }
-  p.innerHTML='<div class="panel-head"><h2>✍️ 阅读练习题</h2><div>'
-    +(quizBuilt?'<button class="btn-secondary" onclick="regenQuiz()">🔄 换一组</button>':'')+'</div></div>'
-    +'<div class="quiz-layout"><div class="quiz-article" id="quizArticle"></div>'
-    +'<div class="quiz-questions" id="quizQuestions"></div></div>';
+  const modeBtns='<div class="qmode"><button class="'+(quizMode==="cols"?"on":"")+'" onclick="setQuizMode(\'cols\')">▥ 两栏</button>'
+    +'<button class="'+(quizMode==="rows"?"on":"")+'" onclick="setQuizMode(\'rows\')">▤ 上下</button></div>';
+  const tools=(quizMode==="rows"&&quizBuilt?'<button class="btn-secondary" onclick="exportQuizPDF()">🖨️ 导出 PDF</button> ':'')
+    +(quizBuilt?'<button class="btn-secondary" onclick="regenQuiz()">🔄 换一组</button>':'');
+  p.innerHTML='<div class="panel-head"><h2>✍️ 阅读练习题</h2><div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">'+modeBtns+tools+'</div></div>'
+    +(quizMode==="cols"
+      ? '<div class="qhint">💡 两栏模式：在左侧文章里选中文字即可<b>黄色高亮</b>划重点（点高亮可取消，高亮存本地）。此模式不导出 PDF。</div>'
+        +'<div class="quiz-layout"><div class="quiz-article" id="quizArticle"></div><div class="quiz-questions" id="quizQuestions"></div></div>'
+      : '<div class="quiz-rows"><div class="quiz-article rows" id="quizArticle"></div><div class="quiz-questions" id="quizQuestions"></div></div>');
   const qa=document.getElementById("quizArticle");
-  // 纯黑、无任何词组/句子标注的排版版
   const plain=extractArticle().replace(/\*\*?/g,"").replace(/==+/g,"");
   qa.innerHTML=renderMd(plain);
+  if(quizMode==="cols") reapplyQuizHL();
   const qq=document.getElementById("quizQuestions");
   if(quizBuilt && quizData) renderQuizQuestions(qq);
-  else qq.innerHTML='<p style="color:var(--muted);margin-bottom:1rem">对照左侧文章，点下面按钮，AI 会现出 5 道阅读理解题。</p>'
+  else qq.innerHTML='<p style="color:var(--muted);margin-bottom:1rem">对照文章，点下面按钮，AI 会现出 5 道阅读理解题。</p>'
     +'<button class="btn" onclick="genQuiz()">▶️ 生成题目</button>';
+}
+/* 两栏模式：选中文字黄色高亮（存本地，可点击取消） */
+function maybeHighlightQuiz(){
+  if(quizMode!=="cols") return;
+  const qa=document.getElementById("quizArticle"); if(!qa) return;
+  const sel=window.getSelection(); const text=sel?sel.toString().trim():"";
+  if(!text || !sel.rangeCount) return;
+  const node=sel.anchorNode, el=node&&node.nodeType===3?node.parentElement:node;
+  if(!el || !qa.contains(el)) return;
+  try{
+    const range=sel.getRangeAt(0);
+    const mark=document.createElement("mark"); mark.className="hl"; mark.onclick=function(){ unhighlight(mark); };
+    range.surroundContents(mark); sel.removeAllRanges();
+    if(!quizHL.includes(text)) quizHL.push(text);
+    persistSession();
+  }catch(e){ /* 跨节点选择忽略 */ }
+}
+function reapplyQuizHL(){
+  const qa=document.getElementById("quizArticle"); if(!qa) return;
+  quizHL.forEach(phrase=>{
+    const w=document.createTreeWalker(qa, NodeFilter.SHOW_TEXT, null); let n;
+    while((n=w.nextNode())){
+      const idx=n.nodeValue.indexOf(phrase);
+      if(idx>=0){ const r=document.createRange(); r.setStart(n,idx); r.setEnd(n,idx+phrase.length);
+        const mark=document.createElement("mark"); mark.className="hl"; mark.onclick=function(){ unhighlight(mark); };
+        try{ r.surroundContents(mark); }catch(e){} break; }
+    }
+  });
+}
+function unhighlight(mark){
+  const t=mark.textContent, parent=mark.parentNode;
+  while(mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+  parent.removeChild(mark);
+  const i=quizHL.indexOf(t); if(i>=0) quizHL.splice(i,1);
+  persistSession();
+}
+function exportQuizPDF(){
+  if(!quizData || !quizData.length){ alert("先生成题目"); return; }
+  const art=renderMd(extractArticle().replace(/\*\*?/g,"").replace(/==+/g,""));
+  let q='<h2>题目</h2><ol>';
+  quizData.forEach(x=>{ q+='<li><div class="q">'+escapeHtml(x.q||"")+'</div><ul>'
+    +(x.options||[]).map(o=>'<li>'+escapeHtml(o)+'</li>').join("")
+    +'</ul><div class="ans">答案：'+String.fromCharCode(65+(x.answer||0))+'。'+escapeHtml(x.explanation||"")+'</div></li>'; });
+  q+='</ol>';
+  openPrintWindow("阅读练习（文章 + 题目）", quizPrintCSS(), '<div class="art">'+art+'</div>'+q);
+}
+function quizPrintCSS(){
+  return 'body{font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;color:#222;line-height:1.7;max-width:760px;margin:0 auto;padding:2rem}'
+    +'.doc-title{text-align:center;font-size:1.5rem;margin-bottom:1.4rem}'
+    +'.art{border-bottom:1px solid #ddd;padding-bottom:1rem;margin-bottom:1.2rem}'
+    +'h2{font-size:1.2rem;margin-top:1.2rem}ol>li{margin-bottom:1rem}ul{padding-left:1.2rem}'
+    +'.q{font-weight:600}.ans{color:#2e7d32;font-size:.9rem;margin-top:.3rem}@page{margin:1.6cm}';
 }
 function regenQuiz(){ quizBuilt=false; quizData=null; genQuiz(); }
 async function genQuiz(){
@@ -848,6 +1001,12 @@ function answerQuiz(qi,oi){
 let diveAcc="";
 let diveChat=[];   // {role:'user'|'assistant', content, trans?}
 let diveTrans="";   // 深度思考正文的中文翻译（缓存）
+let diveLang="";    // 深度思考输出语言，""=跟随原文
+function diveLangSelect(){
+  const opts=[["","跟随原文"],["English","English"],["中文","中文"],["日本語","日本語"],["Deutsch","Deutsch"],["한국어","한국어"],["Français","Français"],["Español","Español"]];
+  return '<select id="diveLang" onchange="diveLang=this.value" title="深度思考输出语言" style="padding:.3rem .5rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem;background:#fff">'
+    +opts.map(o=>'<option value="'+o[0]+'"'+(o[0]===diveLang?' selected':'')+'>🌐 '+o[1]+'</option>').join("")+'</select>';
+}
 function diveHeadHtml(withTools){
   let tools = withTools
     ? '<div><button class="btn-secondary" onclick="readAloud(cleanForTTS(diveMarkdown))">🔊 朗读</button> '
@@ -856,7 +1015,7 @@ function diveHeadHtml(withTools){
       +'<button class="btn-secondary" onclick="exportDivePDF()">🖨️ 导出 PDF</button> '
       +'<button class="btn-secondary" onclick="genDive()">🔄 重新生成</button></div>'
     : '';
-  return '<div class="panel-head"><h2>🌍 深度思考 <span class="muted-count">跟随原文语种</span></h2>'+tools+'</div>';
+  return '<div class="panel-head"><h2>🌍 深度思考</h2>'+tools+'</div>';
 }
 function openDive(){
   const p=document.getElementById("panel-dive");
@@ -870,8 +1029,9 @@ function openDive(){
     return;
   }
   p.innerHTML=diveHeadHtml(false)
-    +'<p style="color:var(--muted);margin-bottom:1rem">用原文的语言，对文章主题做一段深入、批判性思考，结合时事、拓宽视野。点按钮才生成（会调用一次 AI）。</p>'
-    +'<button class="btn" onclick="genDive()">▶️ 生成深度思考</button>';
+    +'<p style="color:var(--muted);margin-bottom:1rem">对文章主题做一段深入、批判性思考，结合时事、拓宽视野。默认用原文的语言，也可下拉自选。点按钮才生成（会调用一次 AI）。</p>'
+    +'<div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">输出语言：'+diveLangSelect()
+    +'<button class="btn" onclick="genDive()">▶️ 生成深度思考</button></div>';
 }
 function genDive(){
   if(busy){ stopGenerating(); if(diveAcc){ diveMarkdown=diveAcc; diveBuilt=true; } openDive(); toast("已停止"); return; }
@@ -879,13 +1039,13 @@ function genDive(){
   if(!lastMarkdown) return;
   diveChat=[]; diveTrans="";
   const p=document.getElementById("panel-dive");
-  p.innerHTML='<div class="panel-head"><h2>🌍 深度思考 <span class="muted-count">跟随原文语种</span></h2><button class="btn-secondary" onclick="genDive()">⏹ 停止</button></div><div id="diveBody" class="dive-body cursor"></div>';
+  p.innerHTML='<div class="panel-head"><h2>🌍 深度思考</h2><button class="btn-secondary" onclick="genDive()">⏹ 停止</button></div><div id="diveBody" class="dive-body cursor"></div>';
   const body=document.getElementById("diveBody");
   diveAcc=""; let pending=false;
   const flush=()=>{ pending=false; body.innerHTML=renderMd(diveAcc); };
   busy=true;
   streamRequest("/deepdive",
-    {api_key:cfg.key,base_url:cfg.base,model:cfg.model,article:extractArticle()||lastMarkdown,lang:cfg.lang},
+    {api_key:cfg.key,base_url:cfg.base,model:cfg.model,article:extractArticle()||lastMarkdown,lang:cfg.lang,outlang:diveLang},
     (delta)=>{ diveAcc+=delta; if(!pending){ pending=true; requestAnimationFrame(flush); } },
     ()=>{ diveMarkdown=diveAcc; diveBuilt=true; busy=false; persistSession(); openDive(); },
     (err)=>{ body.classList.remove("cursor"); body.innerHTML='<p class="empty">失败：'+escapeHtml(err)+' <button class="btn-secondary" onclick="genDive()">重试</button></p>'; busy=false; }
@@ -994,7 +1154,7 @@ function clearChat(){
 function clearAll(){
   if(!confirm("清空当前文章、笔记、闪卡、词汇、练习题和对话，重新开始？（API 设置会保留）")) return;
   document.getElementById("articleInput").value="";
-  lastMarkdown=""; cards=[]; ci=0; flipped=false; quizData=null; quizBuilt=false; diveBuilt=false; diveMarkdown=""; diveChat=[]; diveAcc=""; diveTrans=""; familiarity={}; onlyWeak=false;
+  lastMarkdown=""; cards=[]; ci=0; flipped=false; quizData=null; quizBuilt=false; quizHL=[]; diveBuilt=false; diveMarkdown=""; diveChat=[]; diveAcc=""; diveTrans=""; familiarity={}; onlyWeak=false; userVocab=[];
   resetChat();
   ["notes","cards","vocab","quiz","dive"].forEach(n=>{ document.getElementById("panel-"+n).innerHTML=""; });
   document.getElementById("workspace").style.display="none";
@@ -1025,17 +1185,17 @@ function exportChatPDF(){
   openPrintWindow("AI 导师对话记录", chatPrintCSS(), inner);
 }
 function exportVocabCSV(){
-  const v=extractVocab(); if(!v.length){ alert("没有词汇"); return; }
+  const v=allVocab(); if(!v.length){ alert("没有词汇"); return; }
   const csv="﻿"+toCSV([["表达","释义","场景"]].concat(v.map(r=>[r.term,r.def,r.scene])));
   downloadText(csv,"词汇表-"+today()+".csv","text/csv");
 }
 function exportCardsCSV(){
-  const v=extractVocab(); if(!v.length){ alert("没有词汇"); return; }
+  const v=allVocab(); if(!v.length){ alert("没有词汇"); return; }
   const csv="﻿"+toCSV(v.map(r=>[r.term, r.def+(r.scene?"（"+r.scene+"）":"")]));
   downloadText(csv,"闪卡-"+today()+".csv","text/csv");
 }
 function exportVocabPDF(){
-  const v=extractVocab(); if(!v.length){ alert("没有词汇"); return; }
+  const v=allVocab(); if(!v.length){ alert("没有词汇"); return; }
   const rows=v.map(r=>'<tr><td>'+escapeHtml(r.term)+'</td><td>'+escapeHtml(r.def)+'</td><td>'+escapeHtml(r.scene)+'</td></tr>').join("");
   const inner='<table><thead><tr><th>表达</th><th>释义</th><th>场景</th></tr></thead><tbody>'+rows+'</tbody></table>';
   openPrintWindow("外刊词汇表", vocabPrintCSS(), inner);
