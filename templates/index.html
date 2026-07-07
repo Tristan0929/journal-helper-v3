@@ -949,7 +949,7 @@ function exportQuizPDF(){
   let q='<h2>题目</h2><ol>';
   quizData.forEach(x=>{ q+='<li><div class="q">'+escapeHtml(x.q||"")+'</div><ul>'
     +(x.options||[]).map(o=>'<li>'+escapeHtml(o)+'</li>').join("")
-    +'</ul><div class="ans">答案：'+String.fromCharCode(65+(x.answer||0))+'。'+escapeHtml(x.explanation||"")+'</div></li>'; });
+    +'</ul></li>'; });
   q+='</ol>';
   openPrintWindow("阅读练习（文章 + 题目）", quizPrintCSS(), '<div class="art">'+art+'</div>'+q);
 }
