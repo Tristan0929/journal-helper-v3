@@ -333,7 +333,7 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
     <p class="legend"><span class="v">红色加粗</span>=重点词汇 &nbsp; <span class="s">蓝色斜体</span>=精彩句子 &nbsp; 灰色加粗=结构标签（导出 PDF 颜色保留）。</p>
 
     <h3>③ 上方标签切换功能</h3>
-    <p><b>🎴 闪卡</b>：翻卡背词，可 <b>🔊 朗读</b>、<b>🎤 跟读</b>（Chrome）、<b>✍️ 拼写自测</b>；翻面后用 <b>不认识 / 模糊 / 认识</b> 记熟练度（简易 Anki），可「只复习不熟的」，也能导出 Anki CSV。<br>
+    <p><b>🎴 闪卡</b>：翻卡背词，翻面后用 <b>不认识 / 模糊 / 认识</b> 记熟练度（简易 Anki），可「只复习不熟的」，还有 <b>✍️ 拼写自测</b>，也能导出 Anki CSV。<br>
     <b>📇 词汇表</b>：单独看速查表，导出 PDF / CSV。<br>
     <b>✍️ 练习题</b>：左边文章、右边题目；点「生成题目」才出 5 道阅读选择题，即时判分。<br>
     <b>🌍 深度思考</b>：点「生成」出一段全英文批判性分析；下方可用英文写评论，AI <b>先润色你的表达再和你讨论</b>（练写作）。原文和讨论都能各自导 PDF。</p>
@@ -344,7 +344,10 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
     <h3>⑤ 保存与清空</h3>
     <p>文章、笔记、问答、深度思考讨论、闪卡熟练度都会<b>自动存在本地浏览器</b>，刷新/关掉再打开都还在，直到你点 <b>🗑️ 清空重来</b> 开始下一篇。</p>
 
-    <h3>⑥ 导出</h3>
+    <h3>⑥ 朗读（听力）</h3>
+    <p>笔记和练习题页有 <b>🔊 朗读全文</b>：点了会<b>自动复制排版好、去脚注的全文</b>并打开 <a href="https://www.naturalreaders.com/online/" target="_blank">NaturalReaders</a>，在网页里粘贴（Ctrl/⌘+V）即可用它更自然的真人音色朗读、还能调语速。</p>
+
+    <h3>⑦ 导出</h3>
     <p>Markdown 一律「复制」（省得下载）；PDF 各板块单独下载。打印对话框记得勾「背景图形」以保留配色。</p>
 
     <div class="modal-row"><button class="btn" onclick="closeTutorial()">知道了</button></div>
@@ -565,7 +568,8 @@ function fixFootnoteBreaks(root){
 function enhanceNotes(root){ markVocab(root); fixFootnoteBreaks(root); }
 
 function notesToolbar(){
-  return '<div class="result-toolbar"><button class="btn-secondary" onclick="copyResult()">📋 复制 Markdown</button>'
+  return '<div class="result-toolbar"><button class="btn-secondary" onclick="readAloudNR()">🔊 朗读全文</button>'
+    +'<button class="btn-secondary" onclick="copyResult()">📋 复制 Markdown</button>'
     +'<button class="btn-secondary" onclick="exportNotesPDF()">🖨️ 导出笔记 PDF</button></div>';
 }
 function renderNotes(markdown){
@@ -639,15 +643,12 @@ function buildCards(){
   p.innerHTML=head
     +'<div class="flashcard" onclick="flipCard()"><div class="fc-inner" id="fcInner">'
     +'<div class="fc-face fc-front" id="fcFront"></div><div class="fc-face fc-back" id="fcBack"></div></div></div>'
-    +'<div class="fc-controls"><button class="btn-secondary" onclick="prevCard(event)">←</button>'
-    +'<button class="btn-secondary" onclick="speakCard(event)">🔊 朗读</button>'
-    +(shadowSupported()?'<button class="btn-secondary" onclick="shadowCard(event)">🎤 跟读</button>':'')
+    +'<div class="fc-controls"><button class="btn-secondary" onclick="prevCard(event)">← 上一张</button>'
     +'<button class="btn-secondary" onclick="flipCard()">翻面</button>'
-    +'<button class="btn-secondary" onclick="nextCard(event)">→</button></div>'
+    +'<button class="btn-secondary" onclick="nextCard(event)">下一张 →</button></div>'
     +'<div class="rate-row"><button class="rate r0" onclick="rateCard(0)">不认识</button>'
     +'<button class="rate r1" onclick="rateCard(1)">模糊</button>'
-    +'<button class="rate r2" onclick="rateCard(2)">认识</button></div>'
-    +'<div id="shadowResult" class="shadow-result"></div>';
+    +'<button class="rate r2" onclick="rateCard(2)">认识</button></div>';
   renderCard();
 }
 function fmtLevel(term){ const l=familiarity[term]; return l===2?"✅认识":l===1?"🟡模糊":l===0?"🔴不认识":""; }
@@ -666,24 +667,15 @@ function rateCard(level){
   if(ci<cards.length-1){ ci++; flipped=false; renderCard(); }
   else { toast("本轮完成 🎉"); }
 }
-function speakCard(e){ if(e) e.stopPropagation(); const c=cards[ci]; if(c) speak(c.term); }
-function shadowCard(e){ if(e) e.stopPropagation(); const c=cards[ci]; if(!c) return;
-  const sr=document.getElementById("shadowResult"); sr.textContent="🎤 听你读…";
-  shadowListen(c.term,(heard)=>{
-    const ok=looseMatch(heard,c.term);
-    sr.innerHTML=(ok?'<span style="color:#2e7d32">✅ 很准！</span>':'<span style="color:#c0392b">再试试</span>')+' 你读的：“'+escapeHtml(heard)+'”';
-  });
-}
 /* 拼写自测（cloze）*/
 function toggleCloze(){ clozeMode=!clozeMode; buildCards(); }
 function clozeCardHtml(){
   return '<div class="cloze-card"><div class="cloze-def" id="clozeDef"></div>'
     +'<input id="clozeInput" placeholder="拼出这个词/词组…" onkeypress="if(event.key===\'Enter\')checkCloze()">'
     +'<div id="clozeResult" class="shadow-result"></div>'
-    +'<div class="fc-controls"><button class="btn-secondary" onclick="prevCard(event)">←</button>'
+    +'<div class="fc-controls"><button class="btn-secondary" onclick="prevCard(event)">← 上一个</button>'
     +'<button class="btn-secondary" onclick="checkCloze()">✓ 检查</button>'
-    +'<button class="btn-secondary" onclick="speakCard(event)">🔊 提示读音</button>'
-    +'<button class="btn-secondary" onclick="nextCard(event)">→</button></div>';
+    +'<button class="btn-secondary" onclick="nextCard(event)">下一个 →</button></div>';
 }
 function renderCloze(){
   const c=cards[ci]; if(!c) return;
@@ -731,7 +723,7 @@ function openQuiz(){
   const p=document.getElementById("panel-quiz");
   if(!lastMarkdown){ p.innerHTML='<p class="empty">先生成笔记。</p>'; return; }
   p.innerHTML='<div class="panel-head"><h2>✍️ 阅读练习题</h2><div>'
-    +'<button class="btn-secondary" onclick="speakArticle()">🔊 朗读全文</button> '
+    +'<button class="btn-secondary" onclick="readAloudNR()">🔊 朗读全文</button> '
     +(quizBuilt?'<button class="btn-secondary" onclick="regenQuiz()">🔄 换一组</button>':'')+'</div></div>'
     +'<div class="quiz-layout"><div class="quiz-article" id="quizArticle"></div>'
     +'<div class="quiz-questions" id="quizQuestions"></div></div>';
@@ -1003,41 +995,14 @@ async function sendChat(){
   );
 }
 
-/* ---------- 听说/语感：TTS 朗读 + 语音识别跟读（全客户端，不花 API） ---------- */
-function ttsLang(text){
-  const map={英语:"en-US",日语:"ja-JP",德语:"de-DE",韩语:"ko-KR",法语:"fr-FR",西班牙语:"es-ES",俄语:"ru-RU",意大利语:"it-IT"};
-  if(cfg.lang && cfg.lang!=="auto" && map[cfg.lang]) return map[cfg.lang];
-  if(/[぀-ゟ゠-ヿ]/.test(text)) return "ja-JP";
-  if(/[가-힣]/.test(text)) return "ko-KR";
-  if(/[а-яА-Я]/.test(text)) return "ru-RU";
-  if(/[一-鿿]/.test(text) && !/[A-Za-z]/.test(text)) return "zh-CN";
-  return "en-US";
-}
-let ttsOn=false;
-function speak(text){
-  if(!("speechSynthesis" in window)){ toast("此浏览器不支持朗读"); return; }
-  try{
-    if(speechSynthesis.speaking){ speechSynthesis.cancel(); }
-    const u=new SpeechSynthesisUtterance(text); u.lang=ttsLang(text); u.rate=0.95;
-    speechSynthesis.speak(u);
-  }catch(e){ toast("朗读失败"); }
-}
-function speakArticle(){
-  const t=extractArticle().replace(/[*_`#>|]/g,"").replace(/\n{2,}/g,". ");
-  if(!t){ toast("没有文章"); return; }
-  if(speechSynthesis.speaking){ speechSynthesis.cancel(); toast("已停止朗读"); return; }
-  speak(t);
-}
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-function shadowSupported(){ return !!SR; }
-function shadowListen(target, onResult){
-  if(!SR){ toast("此浏览器不支持语音识别（建议用 Chrome）"); return; }
-  try{
-    const r=new SR(); r.lang=ttsLang(target); r.interimResults=false; r.maxAlternatives=1;
-    r.onresult=(e)=>{ onResult(((e.results[0][0].transcript)||"").trim()); };
-    r.onerror=()=>{ toast("没听清，再试一次"); };
-    r.start();
-  }catch(e){ toast("无法启动语音识别"); }
+/* ---------- 朗读：复制排版好的全文（去脚注）并跳转 NaturalReaders ---------- */
+function readAloudNR(){
+  const t=extractArticle().replace(/\*\*?/g,"").replace(/[`>|]/g,"").replace(/==+/g,"").replace(/\n{3,}/g,"\n\n").trim();
+  if(!t){ toast("还没有文章"); return; }
+  const go=()=>window.open("https://www.naturalreaders.com/online/","_blank");
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(()=>{ toast("全文已复制，正在打开 NaturalReaders，粘贴即可朗读"); go(); }).catch(go);
+  }else{ go(); }
 }
 
 /* ---------- 杂项 ---------- */
