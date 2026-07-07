@@ -129,6 +129,24 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
 .quiz-opt.wrong{background:#fdecea;border-color:#e57373;color:#c62828}
 .quiz-opt:disabled{cursor:default}
 .quiz-exp{margin-top:.7rem;background:#faf7f3;border-radius:8px;padding:.75rem .95rem;font-size:.88rem;line-height:1.65}
+/* 左文右题 */
+.quiz-layout{display:flex;gap:1.4rem;align-items:flex-start}
+.quiz-article{flex:0 0 42%;max-height:76vh;overflow-y:auto;position:sticky;top:1rem;
+  border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;background:#fcfbfa;font-size:.9rem;line-height:1.8}
+.quiz-article strong{color:var(--label)}.quiz-article strong.vocab{color:var(--vocab)}
+.quiz-article em{color:var(--sentence);font-style:italic}
+.quiz-article p{margin:.6rem 0}
+.quiz-questions{flex:1;min-width:0}
+@media(max-width:720px){.quiz-layout{flex-direction:column}.quiz-article{flex:none;width:100%;position:static;max-height:38vh}}
+/* 深度思考 */
+.dive-body{line-height:1.8}
+.dive-body h2{font-size:1.2rem;margin-top:1.8rem;margin-bottom:.6rem}
+.dive-body h3{font-size:1.05rem;margin-top:1.4rem;margin-bottom:.5rem;color:#333}
+.dive-body h2:first-child,.dive-body h3:first-child{margin-top:0}
+.dive-body p{margin:.7rem 0}
+.dive-body ul,.dive-body ol{margin:.6rem 0;padding-left:1.5rem}
+.dive-body li{margin-bottom:.4rem}
+.dive-body strong{color:#333}
 
 /* sidebar */
 .sidebar{position:fixed;top:0;right:calc(-1 * var(--sidebar-width) - 10px);width:var(--sidebar-width);
@@ -229,11 +247,13 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
       <button class="tab" data-tab="cards" onclick="switchTab('cards')">🎴 闪卡</button>
       <button class="tab" data-tab="vocab" onclick="switchTab('vocab')">📇 词汇表</button>
       <button class="tab" data-tab="quiz" onclick="switchTab('quiz')">✍️ 练习题</button>
+      <button class="tab" data-tab="dive" onclick="switchTab('dive')">🌍 深度思考</button>
     </div>
     <div class="card panel" id="panel-notes"></div>
     <div class="card panel" id="panel-cards" style="display:none"></div>
     <div class="card panel" id="panel-vocab" style="display:none"></div>
     <div class="card panel" id="panel-quiz" style="display:none"></div>
+    <div class="card panel" id="panel-dive" style="display:none"></div>
   </div>
 </div>
 
@@ -269,6 +289,19 @@ textarea:focus,input:focus,select:focus{outline:none;border-color:var(--brand)}
       <div class="hint">默认 DeepSeek。也可选其他 OpenAI 兼容服务商或自定义。</div></div>
     <div class="field"><label>接口地址 (base_url)</label><input id="baseUrl" placeholder="https://api.deepseek.com"></div>
     <div class="field"><label>模型</label><input id="model" placeholder="deepseek-v4-flash"><div class="hint" id="modelHint"></div></div>
+    <div class="field"><label>原文语种</label>
+      <select id="lang">
+        <option value="auto">自动识别（推荐）</option>
+        <option value="英语">英语 English</option>
+        <option value="日语">日语 日本語</option>
+        <option value="德语">德语 Deutsch</option>
+        <option value="韩语">韩语 한국어</option>
+        <option value="法语">法语 Français</option>
+        <option value="西班牙语">西班牙语 Español</option>
+        <option value="俄语">俄语 Русский</option>
+        <option value="意大利语">意大利语 Italiano</option>
+      </select>
+      <div class="hint">默认自动识别，最省事；识别不准时可手动指定。讲解始终用中文。</div></div>
     <div class="field"><label>API Key</label><input id="apiKey" type="password" placeholder="sk-..." autocomplete="off"><div class="hint" id="keyLink"></div></div>
     <div class="modal-row">
       <button class="btn btn-ghost" onclick="closeSettings()">取消</button>
@@ -296,7 +329,8 @@ const PROVIDERS = {
   custom:{name:"自定义 (OpenAI 兼容)",base:"",model:"",modelHint:"填写该服务商的模型名。",keyLink:"填写该服务商提供的 Key。"}
 };
 
-let cfg = {provider:"deepseek",base:PROVIDERS.deepseek.base,model:PROVIDERS.deepseek.model,key:""};
+let cfg = {provider:"deepseek",base:PROVIDERS.deepseek.base,model:PROVIDERS.deepseek.model,key:"",lang:"auto"};
+let diveMarkdown = "", diveBuilt = false;
 let lastMarkdown = "";
 let selectedText = "";
 let chatHistory = [];
@@ -324,6 +358,7 @@ function openSettings(){
   document.getElementById("baseUrl").value=cfg.base;
   document.getElementById("model").value=cfg.model;
   document.getElementById("apiKey").value=cfg.key;
+  document.getElementById("lang").value=cfg.lang||"auto";
   applyProviderHints(cfg.provider);
   document.getElementById("modal").classList.add("open");
 }
@@ -343,6 +378,7 @@ function saveSettings(){
   cfg.base=document.getElementById("baseUrl").value.trim();
   cfg.model=document.getElementById("model").value.trim()||PROVIDERS[cfg.provider].model;
   cfg.key=document.getElementById("apiKey").value.trim();
+  cfg.lang=document.getElementById("lang").value||"auto";
   persistConfig(); closeSettings(); refreshKeyHint();
   const tag=document.getElementById("savedTag"); tag.classList.add("show"); setTimeout(()=>tag.classList.remove("show"),2000);
 }
@@ -449,15 +485,20 @@ function switchTab(name){
   setActiveTab(name);
   if(name==="cards") buildCards();
   else if(name==="vocab") buildVocab();
-  else if(name==="quiz") ensureQuiz();
+  else if(name==="quiz") openQuiz();
+  else if(name==="dive") openDive();
 }
 function showWorkspace(){ document.getElementById("workspace").style.display="flex"; }
 
 /* ---------- 笔记渲染 ---------- */
 function markVocab(root){
   root.querySelectorAll("strong").forEach(s=>{
+    const t=s.textContent||"";
     const n=s.nextElementSibling;
-    if(n && n.classList && n.classList.contains("footnote-ref")) s.classList.add("vocab");
+    const hasRef=n && n.classList && n.classList.contains("footnote-ref");           // 脚注已解析
+    const litRef=/^\s*\[\^\d+\]/.test((s.nextSibling && s.nextSibling.textContent)||""); // 脚注没解析时残留的 [^n] 文本
+    const isEnglishVocab=/[A-Za-z]/.test(t) && !/[一-鿿]/.test(t);            // 加粗是英文=词汇；纯中文=结构标签
+    if(hasRef || litRef || isEnglishVocab) s.classList.add("vocab");
   });
 }
 /* 脚注区内：在 📖联动 / 💡仿写 等标记前自动断行（无论模型有没有插 <br>） */
@@ -484,7 +525,7 @@ async function analyze(){
   const article=document.getElementById("articleInput").value.trim();
   if(!article){ alert("请先粘贴文章"); return; }
 
-  busy=true; quizBuilt=false; quizData=null;
+  busy=true; quizBuilt=false; quizData=null; diveBuilt=false; diveMarkdown="";
   resetChat();   // 新文章 = 独立会话，清掉上一篇的对话
   const btn=document.getElementById("analyzeBtn"); btn.disabled=true; btn.textContent="⏳ 分析中...";
   showWorkspace(); setActiveTab("notes");
@@ -495,7 +536,7 @@ async function analyze(){
   let acc="", pending=false;
   const flush=()=>{ pending=false; body.innerHTML=renderMd(acc); enhanceNotes(body); };
   await streamRequest("/analyze",
-    {article, api_key:cfg.key, base_url:cfg.base, model:cfg.model},
+    {article, api_key:cfg.key, base_url:cfg.base, model:cfg.model, lang:cfg.lang},
     (delta)=>{ acc+=delta; if(!pending){ pending=true; requestAnimationFrame(flush); } },
     ()=>{ lastMarkdown=acc; renderNotes(acc); persistSession(); endAnalyze(); },
     (err)=>{ body.classList.remove("cursor"); body.innerHTML='<p style="color:#c0392b">错误：'+escapeHtml(err)+'</p>'; endAnalyze(); }
@@ -556,32 +597,54 @@ function buildVocab(){
     +'<table class="vocab-table"><thead><tr><th>表达</th><th>释义</th><th>场景</th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
-/* ---------- 练习题 ---------- */
-async function ensureQuiz(){ if(quizBuilt && quizData){ renderQuiz(); return; } await genQuiz(); }
+/* ---------- 从笔记提取「## 文章」正文（去掉脚注标记，纯净阅读版） ---------- */
+function extractArticle(){
+  if(!lastMarkdown) return "";
+  const m=lastMarkdown.match(/##\s*文章\s*\n([\s\S]*?)(?:\n##\s|$)/);
+  let body=m?m[1]:lastMarkdown;
+  body=body.replace(/\[\^\d+\]/g,"");   // 去掉脚注引用标记
+  return body.trim();
+}
+
+/* ---------- 练习题（左文右题，题目按需生成） ---------- */
+function openQuiz(){
+  const p=document.getElementById("panel-quiz");
+  if(!lastMarkdown){ p.innerHTML='<p class="empty">先生成笔记。</p>'; return; }
+  p.innerHTML='<div class="panel-head"><h2>✍️ 阅读练习题</h2>'
+    +(quizBuilt?'<button class="btn-secondary" onclick="regenQuiz()">🔄 换一组</button>':'')+'</div>'
+    +'<div class="quiz-layout"><div class="quiz-article" id="quizArticle"></div>'
+    +'<div class="quiz-questions" id="quizQuestions"></div></div>';
+  const qa=document.getElementById("quizArticle");
+  qa.innerHTML=renderMd(extractArticle()); markVocab(qa);
+  const qq=document.getElementById("quizQuestions");
+  if(quizBuilt && quizData) renderQuizQuestions(qq);
+  else qq.innerHTML='<p style="color:var(--muted);margin-bottom:1rem">对照左侧文章，点下面按钮，AI 会现出 5 道阅读理解题。</p>'
+    +'<button class="btn" onclick="genQuiz()">▶️ 生成题目</button>';
+}
 function regenQuiz(){ quizBuilt=false; quizData=null; genQuiz(); }
 async function genQuiz(){
-  const p=document.getElementById("panel-quiz");
   if(!cfg.key){ openSettings(); return; }
-  if(!lastMarkdown){ p.innerHTML='<p class="empty">先生成笔记。</p>'; return; }
-  p.innerHTML='<div class="panel-head"><h2>✍️ 阅读练习题</h2></div><p class="loading-line">⏳ 正在根据文章出题…</p>';
+  if(!lastMarkdown) return;
+  const qq=document.getElementById("quizQuestions");
+  if(qq) qq.innerHTML='<p class="loading-line">⏳ 正在根据文章出题…</p>';
   try{
     const resp=await fetch("/exercises",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({api_key:cfg.key,base_url:cfg.base,model:cfg.model,article:lastMarkdown})});
+      body:JSON.stringify({api_key:cfg.key,base_url:cfg.base,model:cfg.model,article:lastMarkdown,lang:cfg.lang})});
     const data=await resp.json();
-    if(data.error){ p.innerHTML='<p class="empty">出题失败：'+escapeHtml(data.error)+' <button class="btn-secondary" onclick="regenQuiz()">重试</button></p>'; return; }
-    quizData=data.questions||[]; quizBuilt=true; renderQuiz();
-  }catch(e){ p.innerHTML='<p class="empty">网络错误：'+escapeHtml(e.message)+' <button class="btn-secondary" onclick="regenQuiz()">重试</button></p>'; }
+    const t=document.getElementById("quizQuestions"); if(!t) return;
+    if(data.error){ t.innerHTML='<p class="empty">出题失败：'+escapeHtml(data.error)+' <button class="btn-secondary" onclick="genQuiz()">重试</button></p>'; return; }
+    quizData=data.questions||[]; quizBuilt=true; openQuiz();
+  }catch(e){ const t=document.getElementById("quizQuestions"); if(t) t.innerHTML='<p class="empty">网络错误：'+escapeHtml(e.message)+' <button class="btn-secondary" onclick="genQuiz()">重试</button></p>'; }
 }
-function renderQuiz(){
-  const p=document.getElementById("panel-quiz");
-  if(!quizData || !quizData.length){ p.innerHTML='<p class="empty">没有题目。<button class="btn-secondary" onclick="regenQuiz()">重试</button></p>'; return; }
-  let html='<div class="panel-head"><h2>✍️ 阅读练习题 <span class="muted-count">'+quizData.length+' 题</span></h2><button class="btn-secondary" onclick="regenQuiz()">🔄 换一组</button></div>';
+function renderQuizQuestions(container){
+  if(!quizData || !quizData.length){ container.innerHTML='<p class="empty">没有题目。<button class="btn-secondary" onclick="genQuiz()">重试</button></p>'; return; }
+  let html="";
   quizData.forEach((q,qi)=>{
     html+='<div class="quiz-q"><div class="quiz-stem">'+(qi+1)+". "+escapeHtml(q.q||"")+'</div><div class="quiz-opts">';
     (q.options||[]).forEach((op,oi)=>{ html+='<button class="quiz-opt" data-q="'+qi+'" data-o="'+oi+'" onclick="answerQuiz('+qi+','+oi+')">'+escapeHtml(op)+'</button>'; });
     html+='</div><div class="quiz-exp" id="exp-'+qi+'" style="display:none"></div></div>';
   });
-  p.innerHTML=html;
+  container.innerHTML=html;
 }
 function answerQuiz(qi,oi){
   const q=quizData[qi];
@@ -594,6 +657,40 @@ function answerQuiz(qi,oi){
   const head=(oi===q.answer)?"✅ 回答正确":"❌ 正确答案："+String.fromCharCode(65+(q.answer||0));
   exp.innerHTML="<strong>"+head+"</strong><br>"+escapeHtml(q.explanation||"");
 }
+
+/* ---------- 深度思考（全英文，按需生成，流式） ---------- */
+function openDive(){
+  const p=document.getElementById("panel-dive");
+  if(!lastMarkdown){ p.innerHTML='<p class="empty">先生成笔记。</p>'; return; }
+  if(diveBuilt && diveMarkdown){
+    p.innerHTML='<div class="panel-head"><h2>🌍 深度思考 <span class="muted-count">English</span></h2>'
+      +'<div><button class="btn-secondary" onclick="copyDive()">📋 复制</button> '
+      +'<button class="btn-secondary" onclick="genDive()">🔄 重新生成</button></div></div>'
+      +'<div id="diveBody" class="dive-body">'+renderMd(diveMarkdown)+'</div>';
+    return;
+  }
+  p.innerHTML='<div class="panel-head"><h2>🌍 深度思考 <span class="muted-count">English</span></h2></div>'
+    +'<p style="color:var(--muted);margin-bottom:1rem">对文章主题做一段深入、批判性的英文思考，结合时事、拓宽视野。点按钮才生成（会调用一次 AI）。</p>'
+    +'<button class="btn" onclick="genDive()">▶️ 生成深度思考（English）</button>';
+}
+function genDive(){
+  if(busy) return;
+  if(!cfg.key){ openSettings(); return; }
+  if(!lastMarkdown) return;
+  const p=document.getElementById("panel-dive");
+  p.innerHTML='<div class="panel-head"><h2>🌍 深度思考 <span class="muted-count">English</span></h2></div><div id="diveBody" class="dive-body cursor"></div>';
+  const body=document.getElementById("diveBody");
+  let acc="", pending=false;
+  const flush=()=>{ pending=false; body.innerHTML=renderMd(acc); };
+  busy=true;
+  streamRequest("/deepdive",
+    {api_key:cfg.key,base_url:cfg.base,model:cfg.model,article:lastMarkdown},
+    (delta)=>{ acc+=delta; if(!pending){ pending=true; requestAnimationFrame(flush); } },
+    ()=>{ diveMarkdown=acc; diveBuilt=true; busy=false; openDive(); },
+    (err)=>{ body.classList.remove("cursor"); body.innerHTML='<p class="empty">失败：'+escapeHtml(err)+' <button class="btn-secondary" onclick="genDive()">重试</button></p>'; busy=false; }
+  );
+}
+function copyDive(){ if(diveMarkdown) navigator.clipboard.writeText(diveMarkdown).then(()=>toast("已复制")); }
 
 /* ---------- 清空 ---------- */
 function resetChat(){
@@ -608,9 +705,9 @@ function clearChat(){
 function clearAll(){
   if(!confirm("清空当前文章、笔记、闪卡、词汇、练习题和对话，重新开始？（API 设置会保留）")) return;
   document.getElementById("articleInput").value="";
-  lastMarkdown=""; cards=[]; ci=0; flipped=false; quizData=null; quizBuilt=false;
+  lastMarkdown=""; cards=[]; ci=0; flipped=false; quizData=null; quizBuilt=false; diveBuilt=false; diveMarkdown="";
   resetChat();
-  ["notes","cards","vocab","quiz"].forEach(n=>{ document.getElementById("panel-"+n).innerHTML=""; });
+  ["notes","cards","vocab","quiz","dive"].forEach(n=>{ document.getElementById("panel-"+n).innerHTML=""; });
   document.getElementById("workspace").style.display="none";
   setActiveTab("notes");
   try{ localStorage.removeItem("jh_session"); }catch(e){}
